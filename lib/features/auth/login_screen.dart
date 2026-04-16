@@ -138,10 +138,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     final password = passwordController.text;
 
                     if(email == "admin" && password == "admin123"){
-                      Navigator.pushReplacement(
+                      Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const HomeScreen()),
                       );
+
+                      emailController.clear();
+                      passwordController.clear();
+
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Credenciales incorrectas')),
@@ -187,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => RegisterScreen(),
+                          builder: (_) => RegisterScreen(),
                         ),
                       );
                     },

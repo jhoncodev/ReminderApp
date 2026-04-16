@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
+import 'package:reminder_app/features/auth/login_screen.dart';
+import 'package:reminder_app/features/home/home_screen.dart';
+
 
 class MyApp extends StatelessWidget{
   const MyApp({super.key});
@@ -13,7 +15,7 @@ class MyApp extends StatelessWidget{
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home: const HomeScreen(),
     );
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:reminder_app/features/home/create_activity_screen.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -105,12 +107,28 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
 
-      // Floating Action Button
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+      floatingActionButton: SpeedDial(
+        icon: Icons.add,
+        activeIcon: Icons.close,
         backgroundColor: const Color(0xFF9D65FF),
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 32),
+        foregroundColor: Colors.white,
+        overlayOpacity: 0.2,
+
+        children: [
+          SpeedDialChild(
+            backgroundColor: Colors.white,
+            label: 'Crear Actividad',
+            labelStyle: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CreateActivityScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
 
       // Custom Bottom Navigation

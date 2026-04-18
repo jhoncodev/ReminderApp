@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/features/home/create_activity_screen.dart';
+import 'package:reminder_app/features/home/create_course_screen.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -19,7 +20,6 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 32),
               _buildStatsRow(),
               const SizedBox(height: 40),
-
 
               const Text(
                 "Today's Schedule",
@@ -118,14 +118,32 @@ class HomeScreen extends StatelessWidget {
           SpeedDialChild(
             backgroundColor: Colors.white,
             label: 'Crear Actividad',
-            labelStyle: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
+            labelStyle: const TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const CreateActivityScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const CreateActivityScreen()),
               );
+            },
+          ),
+          SpeedDialChild(
+            backgroundColor: Colors.white,
+            label: 'Crear Curso',
+            labelStyle: const TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateCourseScreen()),
+              );
+              // Acción para crear recordatorio
             },
           ),
         ],
@@ -147,7 +165,10 @@ class HomeScreen extends StatelessWidget {
             const CircleAvatar(
               radius: 24,
               backgroundColor: Color(0xFF232329),
-              child: Icon(Icons.person, color: Colors.white54), // Placeholder for image
+              child: Icon(
+                Icons.person,
+                color: Colors.white54,
+              ), // Placeholder for image
             ),
             const SizedBox(width: 16),
             Column(
@@ -286,8 +307,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (icon != null)
-                    Icon(icon, color: Colors.white24, size: 32),
+                  if (icon != null) Icon(icon, color: Colors.white24, size: 32),
                 ],
               ),
             ),
@@ -330,10 +350,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
           ),
@@ -372,14 +389,11 @@ class HomeScreen extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: isActive
               ? const BoxDecoration(
-            color: Color(0xFF9D65FF),
-            shape: BoxShape.circle,
-          )
+                  color: Color(0xFF9D65FF),
+                  shape: BoxShape.circle,
+                )
               : null,
-          child: Icon(
-            icon,
-            color: isActive ? Colors.white : Colors.white24,
-          ),
+          child: Icon(icon, color: isActive ? Colors.white : Colors.white24),
         ),
         const SizedBox(height: 8),
         Text(

@@ -181,7 +181,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF9D65FF).withOpacity(0.5),
+                        color: const Color(0xFF9D65FF).withValues(alpha: 0.6),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -244,7 +244,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                     if (!value) selectedPeriod = null;
                   });
                 },
-                activeColor: const Color(0xFF9D65FF),
+                activeThumbColor: const Color(0xFF9D65FF),
               ),
             ),
           ],
@@ -312,7 +312,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 onChanged: (value) {
                   setState(() => isWeeklyScheduleEnabled = value);
                 },
-                activeColor: const Color(0xFF9D65FF),
+                activeThumbColor: const Color(0xFF9D65FF),
               ),
             ),
           ],

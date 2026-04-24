@@ -55,7 +55,9 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
               primary: Color(0xFF9D65FF),
               surface: Color(0xFF232329),
             ),
-            dialogBackgroundColor: const Color(0xFF1E1E1E),
+            dialogTheme: const DialogThemeData(
+              backgroundColor: Color(0xFF1E1E1E),
+            ),
           ),
           child: child!,
         );
@@ -83,7 +85,9 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
               primary: Color(0xFF9D65FF),
               surface: Color(0xFF232329),
             ),
-            dialogBackgroundColor: const Color(0xFF1E1E1E),
+            dialogTheme: const DialogThemeData(
+              backgroundColor: Color(0xFF1E1E1E),
+            ) ,
           ),
           child: child!,
         );
@@ -246,7 +250,7 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF9D65FF).withOpacity(0.5),
+                        color: const Color(0xFF9D65FF),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),

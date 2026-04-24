@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:reminder_app/features/home/add_period_screen.dart';
 import 'package:reminder_app/features/home/create_activity_screen.dart';
 import 'package:reminder_app/features/home/create_course_screen.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
@@ -144,6 +145,21 @@ class HomeScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const CreateCourseScreen()),
               );
               // Acción para crear recordatorio
+            },
+          ),
+          SpeedDialChild(
+            backgroundColor: Colors.white,
+            label: 'Agregar Periodo',
+            labelStyle: const TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddPeriodScreen()),
+              );
             },
           ),
         ],

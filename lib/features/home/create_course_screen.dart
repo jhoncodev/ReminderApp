@@ -14,7 +14,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   bool isAcademicPeriodEnabled = false;
   bool isWeeklyScheduleEnabled = false;
   AcademicPeriod? selectedPeriod;
-  List<String> days = ["L", "M", "X", "J", "V", "S", "D"];
+  List<String> days = ["L", "M", "M", "J", "V", "S", "D"];
   List<bool> selectedDays = List.generate(7, (_) => false);
 
   @override
@@ -127,7 +127,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Diseña tu itinerario.",
+          "Crear Curso",
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -150,7 +150,6 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                     controller: nameController,
                     hint: "Ej. Matemáticas",
                   ),
-
                   const SizedBox(height: 24),
 
                   // Academic Period Section

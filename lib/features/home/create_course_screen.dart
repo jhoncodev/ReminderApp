@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:reminder_app/features/home/add_period_screen.dart';
 
 class CreateCourseScreen extends StatefulWidget {
   const CreateCourseScreen({super.key});
@@ -9,78 +10,91 @@ class CreateCourseScreen extends StatefulWidget {
 
 class _CreateCourseScreenState extends State<CreateCourseScreen> {
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController academicPeriodNameController =
-      TextEditingController();
-  final TextEditingController startDateController = TextEditingController();
-  final TextEditingController endDateController = TextEditingController();
 
   bool isAcademicPeriodEnabled = false;
   bool isWeeklyScheduleEnabled = false;
+  AcademicPeriod? selectedPeriod;
   List<String> days = ["L", "M", "X", "J", "V", "S", "D"];
   List<bool> selectedDays = List.generate(7, (_) => false);
 
   @override
   void dispose() {
     nameController.dispose();
-    academicPeriodNameController.dispose();
-    startDateController.dispose();
-    endDateController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectStartDate(BuildContext context) async {
-    final picked = await showDatePicker(
+  // Abre un bottom sheet con los periodos disponibles + opción para crear uno nuevo
+  Future<void> _openPeriodSelector() async {
+    final result = await showModalBottomSheet<AcademicPeriod>(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF9D65FF),
-              surface: Color(0xFF232329),
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Selecciona un periodo",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...AcademicPeriod.all.map(
+                  (period) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      period.name,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      "${period.startDate} - ${period.endDate}",
+                      style: const TextStyle(color: Color(0xFF5A5A62)),
+                    ),
+                    onTap: () => Navigator.pop(context, period),
+                  ),
+                ),
+                const Divider(color: Color(0xFF232329)),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.add, color: Color(0xFF9D65FF)),
+                  title: const Text(
+                    "Crear nuevo periodo",
+                    style: TextStyle(
+                      color: Color(0xFF9D65FF),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final newPeriod = await Navigator.push<AcademicPeriod>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AddPeriodScreen(),
+                      ),
+                    );
+                    if (newPeriod != null) {
+                      setState(() => selectedPeriod = newPeriod);
+                    }
+                  },
+                ),
+              ],
             ),
-            dialogBackgroundColor: const Color(0xFF1E1E1E),
           ),
-          child: child!,
         );
       },
     );
 
-    if (picked != null) {
-      setState(() {
-        startDateController.text =
-            "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
-      });
-    }
-  }
-
-  Future<void> _selectEndDate(BuildContext context) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF9D65FF),
-              surface: Color(0xFF232329),
-            ),
-            dialogBackgroundColor: const Color(0xFF1E1E1E),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        endDateController.text =
-            "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
-      });
+    if (result != null) {
+      setState(() => selectedPeriod = result);
     }
   }
 
@@ -212,7 +226,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 _label("PERIODO ACADÉMICO"),
                 const SizedBox(height: 4),
                 const Text(
-                  "Limitar a 3 ciclos mayúsculos (p. ej. Ciclo 2024)",
+                  "Selecciona el ciclo al que pertenece este curso",
                   style: TextStyle(
                     color: Color(0xFF5A5A62),
                     fontSize: 12,
@@ -225,7 +239,10 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               child: Switch(
                 value: isAcademicPeriodEnabled,
                 onChanged: (value) {
-                  setState(() => isAcademicPeriodEnabled = value);
+                  setState(() {
+                    isAcademicPeriodEnabled = value;
+                    if (!value) selectedPeriod = null;
+                  });
                 },
                 activeColor: const Color(0xFF9D65FF),
               ),
@@ -234,82 +251,47 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         ),
         if (isAcademicPeriodEnabled) ...[
           const SizedBox(height: 16),
-          _label("NOMBRE DEL PERIODO"),
-          _input(
-            controller: academicPeriodNameController,
-            hint: "Ej. Ciclo 2024",
-          ),
-          const SizedBox(height: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "INICIO",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
+          _label("PERIODO"),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _openPeriodSelector,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+              decoration: BoxDecoration(
+                color: const Color(0xFF232329),
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () => _selectStartDate(context),
-                child: TextField(
-                  controller: startDateController,
-                  enabled: false,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: "mm/dd/yyyy",
-                    hintStyle: const TextStyle(color: Color(0xFF5A5A62)),
-                    filled: true,
-                    fillColor: const Color(0xFF232329),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                    suffixIcon: const Icon(
-                      Icons.calendar_today,
-                      color: Color(0xFF9D65FF),
-                      size: 18,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selectedPeriod?.name ?? "Selecciona un periodo",
+                      style: TextStyle(
+                        color: selectedPeriod != null
+                            ? Colors.white
+                            : const Color(0xFF5A5A62),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                "FIN",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () => _selectEndDate(context),
-                child: TextField(
-                  controller: endDateController,
-                  enabled: false,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: "mm/dd/yyyy",
-                    hintStyle: const TextStyle(color: Color(0xFF5A5A62)),
-                    filled: true,
-                    fillColor: const Color(0xFF232329),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                    suffixIcon: const Icon(
-                      Icons.calendar_today,
-                      color: Color(0xFF9D65FF),
-                      size: 18,
-                    ),
+                  const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xFF9D65FF),
+                    size: 22,
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
+          if (selectedPeriod != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              "${selectedPeriod!.startDate} - ${selectedPeriod!.endDate}",
+              style: const TextStyle(
+                color: Color(0xFF5A5A62),
+                fontSize: 12,
+              ),
+            ),
+          ],
         ],
       ],
     );

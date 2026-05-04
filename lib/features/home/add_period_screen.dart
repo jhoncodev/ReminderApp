@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:reminder_app/core/theme/app_colors.dart';
 
 // Modelo simple del periodo académico
 class AcademicPeriod {
@@ -139,9 +140,9 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0A0A),
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -244,9 +245,7 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   height: 56,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFB483FF), Color(0xFF7A4BFF)],
-                    ),
+                    gradient: AppColors.primaryGradient,
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(

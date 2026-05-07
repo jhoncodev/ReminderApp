@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/widgets/app_label.dart';
+import 'package:reminder_app/core/widgets/app_text_field.dart';
+import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 
 class CreateActivityScreen extends StatefulWidget {
   const CreateActivityScreen({super.key});
@@ -46,22 +50,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Crear Actividad",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            ),
-        ),
-      ),
+      appBar: const DarkAppBar(title: "Crear Actividad"),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -69,25 +58,31 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Acitivity name
-              _label("NOMBRE DE LA ACTIVIDAD"),
-              _input(controller: nameController, hint: "Ej. Sesión de Yoga"),
+              const AppLabel(text:"NOMBRE DE LA ACTIVIDAD"),
+              const SizedBox(height: 8),
+              AppTextField(
+                controller: nameController, 
+                hint: "Ej. Sesión de Yoga"
+              ),
 
               const SizedBox(height: 20),
 
               // Notes
-              _label("NOTAS / DETALLES"),
-              _input(
-                controller: notesController,
-                hint: "Detalles adicionales...",
+              const AppLabel(text:"NOTAS / DETALLES"),
+              const SizedBox(height: 8),
+              AppTextField(
+                controller: notesController, 
+                hint: "Detalles adicionales ...",
                 maxLines: 3,
               ),
 
               const SizedBox(height: 20),
 
               // Amount
-              _label("PRESUPUESTO"),
-              _input(
-                controller: amountController,
+              const AppLabel(text:"PRESUPUESTO"),
+              const SizedBox(height: 8),
+              AppTextField(
+                controller: amountController, 
                 hint: "Monto (opcional)",
                 keyboardType: TextInputType.number,
               ),
@@ -95,83 +90,26 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               const SizedBox(height: 24),
 
               // Frequency
-              _label("FRECUENCIA"),
+              const AppLabel(text:"FRECUENCIA"),
               const SizedBox(height: 8),
               _frequencySelector(),
 
               const SizedBox(height: 20),
 
               // Days
-              _label("DÍAS SELECCIONADOS"),
+              const AppLabel(text:"DÍAS SELECCIONADOS"),
               const SizedBox(height: 8),
               _daysSelector(),
 
               const SizedBox(height: 32),
 
               // Create button
-              Container(
-                width: double.infinity,
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: ElevatedButton(
-                  onPressed: createActivity,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                  ),
-                  child: const Text(
-                    "Crear Actividad",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
+              PrimaryGradientButton(
+                text: "Crear Actividad", 
+                onPressed: createActivity,
+                glow: true,
+              )
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Labels
-  Widget _label(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Colors.white70,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-
-  // Inputs
-  Widget _input({
-    required TextEditingController controller,
-    required String hint,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Color(0xFF5A5A62)),
-          filled: true,
-          fillColor: const Color(0xFF232329),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
           ),
         ),
       ),

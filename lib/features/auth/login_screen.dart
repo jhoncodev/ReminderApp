@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/widgets/app_label.dart';
+import 'package:reminder_app/core/widgets/app_password_field.dart';
+import 'package:reminder_app/core/widgets/app_text_field.dart';
+import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/features/auth/register_screen.dart';
 import 'package:reminder_app/features/home/home_screen.dart';
 
@@ -19,6 +23,24 @@ class _LoginScreenState extends State<LoginScreen> {
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  void loginAccess(){
+    final email = emailController.text;
+    final password = passwordController.text;
+
+    if (email == "admin" && password == "admin123") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+      emailController.clear();
+      passwordController.clear();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Credenciales incorrectas')),
+      );
+    }
   }
 
   @override
@@ -64,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'TU GALERÍA DE INTENCIONES',
+                "TU GALERÍA DE INTENCIONES",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey,
@@ -76,22 +98,18 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 48),
 
               // 3. Email Input
-              _buildLabel('CORREO ELECTRÓNICO'),
+              const AppLabel(text:"CORREO ELECTRÓNICO"),
               const SizedBox(height: 8),
-              _buildTextField(
-                hintText: 'nombre@ejemplo.com',
-                controller: emailController,
+              AppTextField(
+                controller: emailController, 
+                hint: "nombre@gmail.com",
               ),
               const SizedBox(height: 24),
 
               // 4. Password Input
-              _buildLabel('CONTRASEÑA'),
+              const AppLabel(text:"CONTRASEÑA"),
               const SizedBox(height: 8),
-              _buildTextField(
-                hintText: '••••••••', 
-                obscureText: true,
-                controller: passwordController,
-              ),
+              AppPasswordField(controller: passwordController),
               const SizedBox(height: 12),
 
               // 5. Forgot Password Link
@@ -119,55 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 32),
 
               // 6. Gradient Login Button
-              Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    final email = emailController.text;
-                    final password = passwordController.text;
-
-                    if(email == "admin" && password == "admin123"){
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const HomeScreen()),
-                      );
-
-                      emailController.clear();
-                      passwordController.clear();
-
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Credenciales incorrectas')),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Iniciar Sesión',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-                    ],
-                  ),
-                ),
+              PrimaryGradientButton(
+                text: "Iniciar Sesión", 
+                onPressed: loginAccess,
+                glow: true,
               ),
               const SizedBox(height: 40),
 
@@ -201,39 +174,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-
-
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Colors.white70,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.0,
-      ),
-    );
-  }
-
-  Widget _buildTextField({required String hintText, bool obscureText = false, TextEditingController? controller}) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Color(0xFF5A5A62)),
-        filled: true,
-        fillColor: const Color(0xFF232329), // The dark grey from the design
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
         ),
       ),
     );

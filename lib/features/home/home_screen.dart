@@ -149,7 +149,7 @@ class HomeScreen extends StatelessWidget {
           ),
           SpeedDialChild(
             backgroundColor: Colors.white,
-            label: 'Agregar Periodo',
+            label: 'Crear Periodo',
             labelStyle: const TextStyle(
               color: Colors.black,
               fontSize: 16,

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/widgets/app_label.dart';
+import 'package:reminder_app/core/widgets/app_text_field.dart';
+import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 
 // Modelo simple del periodo académico
 class AcademicPeriod {
@@ -141,42 +145,26 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Agregar periodo",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: false,
-      ),
+      appBar: const DarkAppBar(title: "Crear Periodo"),
       body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
+        child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Period name
-                  _label("NOMBRE DEL PERIODO"),
-                  _input(
-                    controller: nameController,
-                    hint: "Ej. Ciclo 2024",
+                  const AppLabel(text:"NOMBRE DEL PERIODO"),
+                  
+                  const SizedBox(height: 8),
+                  AppTextField(
+                    controller: nameController, 
+                    hint: "Ej. Ciclo 2024"
                   ),
 
                   const SizedBox(height: 24),
 
                   // Start date
-                  _label("INICIO"),
+                  const AppLabel(text:"INICIO"),
                   const SizedBox(height: 8),
                   GestureDetector(
                     onTap: () => _selectStartDate(context),
@@ -205,7 +193,7 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
                   const SizedBox(height: 20),
 
                   // End date
-                  _label("FIN"),
+                  const AppLabel(text:"FIN"),
                   const SizedBox(height: 8),
                   GestureDetector(
                     onTap: () => _selectEndDate(context),
@@ -231,91 +219,17 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 100),
+                  // Button
+                  const SizedBox(height: 50),
+                  PrimaryGradientButton(
+                    text: "Crear Periodo", 
+                    onPressed: createPeriod,
+                    glow: true,
+                  )
                 ],
               ),
             ),
-            // Floating button
-            Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF9D65FF),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: createPeriod,
-                      borderRadius: BorderRadius.circular(28),
-                      child: const Center(
-                        child: Text(
-                          "Añadir periodo",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-
-  Widget _input({
-    required TextEditingController controller,
-    required String hint,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Color(0xFF5A5A62)),
-          filled: true,
-          fillColor: const Color(0xFF232329),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
+      );
   }
 }

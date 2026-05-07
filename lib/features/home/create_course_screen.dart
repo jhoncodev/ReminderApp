@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/widgets/app_label.dart';
+import 'package:reminder_app/core/widgets/app_text_field.dart';
+import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/features/home/add_period_screen.dart';
 
 class CreateCourseScreen extends StatefulWidget {
@@ -24,7 +28,6 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     super.dispose();
   }
 
-  // Abre un bottom sheet con los periodos disponibles + opción para crear uno nuevo
   Future<void> _openPeriodSelector() async {
     final result = await showModalBottomSheet<AcademicPeriod>(
       context: context,
@@ -120,36 +123,19 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Crear Curso",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: false,
-      ),
+      appBar: const DarkAppBar(title: "Crear Curso"),
       body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
+        child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Course name
-                  _label("NOMBRE DEL CURSO"),
-                  _input(
-                    controller: nameController,
-                    hint: "Ej. Matemáticas",
+                  const AppLabel(text:"NOMBRE DEL CURSO"),
+                  const SizedBox(height: 8),
+                  AppTextField(
+                    controller: nameController, 
+                    hint: "Ej. Aplicaciones Móviles"
                   ),
                   const SizedBox(height: 24),
 
@@ -161,54 +147,19 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   // Weekly Schedule Section
                   _buildWeeklyScheduleSection(),
 
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 50),
+                  
+                  // Button
+                  PrimaryGradientButton(
+                    text: "Crear Curso", 
+                    onPressed: createCourse,
+                    glow: true,
+                  )
                 ],
               ),
             ),
-            // Floating button
-            Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF9D65FF).withValues(alpha: 0.6),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: createCourse,
-                      borderRadius: BorderRadius.circular(28),
-                      child: const Center(
-                        child: Text(
-                          "Añadir curso",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildAcademicPeriodSection() {
@@ -221,7 +172,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _label("PERIODO ACADÉMICO"),
+                const AppLabel(text:"PERIODO ACADÉMICO"),
                 const SizedBox(height: 4),
                 const Text(
                   "Selecciona el ciclo al que pertenece este curso",
@@ -249,7 +200,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         ),
         if (isAcademicPeriodEnabled) ...[
           const SizedBox(height: 16),
-          _label("PERIODO"),
+          const AppLabel(text:"PERIODO"),
           const SizedBox(height: 8),
           GestureDetector(
             onTap: _openPeriodSelector,
@@ -302,7 +253,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _label("HORARIO SEMANAL"),
+            const AppLabel(text:"HORARIO SEMANAL"),
             Transform.scale(
               scale: 0.8,
               child: Switch(
@@ -320,44 +271,6 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           _daysSelector(),
         ],
       ],
-    );
-  }
-
-  Widget _label(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-
-  Widget _input({
-    required TextEditingController controller,
-    required String hint,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Color(0xFF5A5A62)),
-          filled: true,
-          fillColor: const Color(0xFF232329),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
     );
   }
 

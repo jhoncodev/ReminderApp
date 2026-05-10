@@ -4,6 +4,7 @@ import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
+import 'package:reminder_app/core/widgets/app_date_picker_field.dart';
 
 // Modelo simple del periodo académico
 class AcademicPeriod {
@@ -47,65 +48,7 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
     super.dispose();
   }
 
-  Future<void> _selectStartDate(BuildContext context) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF9D65FF),
-              surface: Color(0xFF232329),
-            ),
-            dialogTheme: const DialogThemeData(
-              backgroundColor: Color(0xFF1E1E1E),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
 
-    if (picked != null) {
-      setState(() {
-        startDateController.text =
-            "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
-      });
-    }
-  }
-
-  Future<void> _selectEndDate(BuildContext context) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF9D65FF),
-              surface: Color(0xFF232329),
-            ),
-            dialogTheme: const DialogThemeData(
-              backgroundColor: Color(0xFF1E1E1E),
-            ) ,
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        endDateController.text =
-            "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
-      });
-    }
-  }
 
   void createPeriod() {
     final name = nameController.text;
@@ -166,28 +109,9 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
                   // Start date
                   const AppLabel(text:"INICIO"),
                   const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () => _selectStartDate(context),
-                    child: TextField(
-                      controller: startDateController,
-                      enabled: false,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: "mm/dd/yyyy",
-                        hintStyle: const TextStyle(color: Color(0xFF5A5A62)),
-                        filled: true,
-                        fillColor: const Color(0xFF232329),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        suffixIcon: const Icon(
-                          Icons.calendar_today,
-                          color: Color(0xFF9D65FF),
-                          size: 18,
-                        ),
-                      ),
-                    ),
+                  AppDatePickerField(
+                    controller: startDateController,
+                    label: "Fecha de inicio",
                   ),
 
                   const SizedBox(height: 20),
@@ -195,28 +119,9 @@ class _AddPeriodScreenState extends State<AddPeriodScreen> {
                   // End date
                   const AppLabel(text:"FIN"),
                   const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () => _selectEndDate(context),
-                    child: TextField(
-                      controller: endDateController,
-                      enabled: false,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: "mm/dd/yyyy",
-                        hintStyle: const TextStyle(color: Color(0xFF5A5A62)),
-                        filled: true,
-                        fillColor: const Color(0xFF232329),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        suffixIcon: const Icon(
-                          Icons.calendar_today,
-                          color: Color(0xFF9D65FF),
-                          size: 18,
-                        ),
-                      ),
-                    ),
+                  AppDatePickerField(
+                    controller: endDateController,
+                    label: "Fecha de fin",
                   ),
 
                   // Button

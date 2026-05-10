@@ -4,6 +4,7 @@ import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
+import 'package:reminder_app/core/widgets/days_selector.dart';
 
 class CreateActivityScreen extends StatefulWidget {
   const CreateActivityScreen({super.key});
@@ -99,7 +100,14 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               // Days
               const AppLabel(text:"DÍAS SELECCIONADOS"),
               const SizedBox(height: 8),
-              _daysSelector(),
+              DaysSelector(
+                selectedDays: selectedDays,
+                onSelectionChanged: (updatedDays) {
+                  setState(() {
+                    selectedDays = updatedDays;
+                  });
+                },
+              ),
 
               const SizedBox(height: 32),
 
@@ -152,35 +160,4 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
     );
   }
 
-  // Days selector
-  Widget _daysSelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(days.length, (index) {
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              selectedDays[index] = !selectedDays[index];
-            });
-          },
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: selectedDays[index]
-                  ? const Color(0xFF9D65FF)
-                  : const Color(0xFF232329),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                days[index],
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
 }

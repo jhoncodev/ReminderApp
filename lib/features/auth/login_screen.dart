@@ -6,6 +6,7 @@ import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/features/auth/register_screen.dart';
 import 'package:reminder_app/features/home/home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,51 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _loginUser() async {
+    setState(() => _isLoading = true);
+    try {
+      // 1. Authenticate the user with Firebase
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Login successful!')));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      // Handle specific Firebase login errors
+      String errorMessage = e.message ?? 'An error occurred during login.';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No user found for that email.';
+      } else if (e.code == 'wrong-password') {
+        errorMessage = 'Wrong password provided.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'The email address is badly formatted.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -25,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void loginAccess(){
+  void loginAccess() {
     final email = emailController.text;
     final password = passwordController.text;
 
@@ -37,9 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
       emailController.clear();
       passwordController.clear();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Credenciales incorrectas')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Credenciales incorrectas')));
     }
   }
 
@@ -98,16 +144,16 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 48),
 
               // 3. Email Input
-              const AppLabel(text:"CORREO ELECTRÓNICO"),
+              const AppLabel(text: "CORREO ELECTRÓNICO"),
               const SizedBox(height: 8),
               AppTextField(
-                controller: emailController, 
+                controller: emailController,
                 hint: "nombre@gmail.com",
               ),
               const SizedBox(height: 24),
 
               // 4. Password Input
-              const AppLabel(text:"CONTRASEÑA"),
+              const AppLabel(text: "CONTRASEÑA"),
               const SizedBox(height: 8),
               AppPasswordField(controller: passwordController),
               const SizedBox(height: 12),
@@ -138,8 +184,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // 6. Gradient Login Button
               PrimaryGradientButton(
-                text: "Iniciar Sesión", 
-                onPressed: loginAccess,
+                text: "Iniciar Sesión",
+                onPressed: _isLoading ? null : _loginUser,
                 glow: true,
               ),
               const SizedBox(height: 40),
@@ -156,9 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => RegisterScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => RegisterScreen()),
                       );
                     },
                     child: const Text(

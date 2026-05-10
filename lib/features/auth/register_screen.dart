@@ -5,6 +5,8 @@ import 'package:reminder_app/core/widgets/app_password_field.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
   
   @override
   void dispose(){
@@ -26,6 +29,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
     passwordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _registerUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 1. Create the user in Firebase Authentication
+      if (passwordController.text.trim() != confirmPasswordController.text.trim()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Las contraseñas no coinciden')),
+          );
+        }
+        return;
+      }
+
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+      
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid) 
+          .set({
+        'email': emailController.text.trim(),
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User created successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+    
   }
 
   void registerUser(){
@@ -108,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // Register Button
               PrimaryGradientButton(
                 text: "Registrarse", 
-                onPressed: registerUser,
+                onPressed: _isLoading ? null : _registerUser,
                 glow: true,
               ),
               const SizedBox(height: 24),

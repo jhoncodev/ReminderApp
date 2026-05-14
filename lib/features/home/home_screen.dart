@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:reminder_app/features/home/add_period_screen.dart';
-import 'package:reminder_app/features/home/create_activity_screen.dart';
-import 'package:reminder_app/features/home/create_course_screen.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/widgets/create_options_sheet.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -108,63 +106,12 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
 
-      floatingActionButton: SpeedDial(
-        icon: Icons.add,
-        activeIcon: Icons.close,
-        backgroundColor: const Color(0xFF9D65FF),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.purplePrimary,
         foregroundColor: Colors.white,
-        overlayOpacity: 0.2,
-
-        children: [
-          SpeedDialChild(
-            backgroundColor: Colors.white,
-            label: 'Crear Actividad',
-            labelStyle: const TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateActivityScreen()),
-              );
-            },
-          ),
-          SpeedDialChild(
-            backgroundColor: Colors.white,
-            label: 'Crear Curso',
-            labelStyle: const TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateCourseScreen()),
-              );
-              // Acción para crear recordatorio
-            },
-          ),
-          SpeedDialChild(
-            backgroundColor: Colors.white,
-            label: 'Crear Periodo',
-            labelStyle: const TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddPeriodScreen()),
-              );
-            },
-          ),
-        ],
+        onPressed: () => CreateOptionsSheet.show(context),
+        child: const Icon(Icons.add),
       ),
-
       // Custom Bottom Navigation
       bottomNavigationBar: _buildBottomNav(),
     );

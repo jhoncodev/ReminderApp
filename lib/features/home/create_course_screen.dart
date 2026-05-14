@@ -1,26 +1,60 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/days_selector.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
-import 'package:reminder_app/features/home/add_period_screen.dart';
+import 'package:reminder_app/data/course_repository.dart';
+import 'package:reminder_app/data/period_repository.dart';
+import 'package:reminder_app/models/course.dart';
+import 'package:reminder_app/models/period.dart';
 
 class CreateCourseScreen extends StatefulWidget {
-  const CreateCourseScreen({super.key});
+  final Course? course;
+  const CreateCourseScreen({super.key, this.course});
+
+  bool get isEditing => course != null;
 
   @override
   State<CreateCourseScreen> createState() => _CreateCourseScreenState();
 }
 
 class _CreateCourseScreenState extends State<CreateCourseScreen> {
-  final TextEditingController nameController = TextEditingController();
+  final _courseRepo = CourseRepository();
+  final _periodRepo = PeriodRepository();
+  final nameController = TextEditingController();
 
   bool isAcademicPeriodEnabled = false;
-  bool isWeeklyScheduleEnabled = false;
-  AcademicPeriod? selectedPeriod;
-  List<String> days = ["L", "M", "M", "J", "V", "S", "D"];
+  Period? selectedPeriod;
   List<bool> selectedDays = List.generate(7, (_) => false);
+
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.course;
+    if (existing == null) return;
+
+    nameController.text = existing.name;
+
+    // Dias prellenados
+    for (final day in existing.scheduleDays) {
+      if (day >= 0 && day < selectedDays.length) {
+        selectedDays[day] = true;
+      }
+    }
+
+    if (existing.academicPeriodId != null) {
+      isAcademicPeriodEnabled = true;
+      _periodRepo.getById(existing.academicPeriodId!).then((period) {
+        if (!mounted) return;
+        setState(() => selectedPeriod = period);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -28,73 +62,86 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     super.dispose();
   }
 
+  String _formatDate(DateTime date) {
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return "$m/$d/${date.year}";
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _openPeriodSelector() async {
-    final result = await showModalBottomSheet<AcademicPeriod>(
+    final result = await showModalBottomSheet<Period>(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Selecciona un periodo",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ...AcademicPeriod.all.map(
-                  (period) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      period.name,
-                      style: const TextStyle(color: Colors.white),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: StreamBuilder<List<Period>>(
+            stream: _periodRepo.watchAll(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.purplePrimary,
                     ),
-                    subtitle: Text(
-                      "${period.startDate} - ${period.endDate}",
-                      style: const TextStyle(color: Color(0xFF5A5A62)),
-                    ),
-                    onTap: () => Navigator.pop(context, period),
                   ),
-                ),
-                const Divider(color: Color(0xFF232329)),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.add, color: Color(0xFF9D65FF)),
-                  title: const Text(
-                    "Crear nuevo periodo",
+                );
+              }
+
+              final periods = snapshot.data ?? [];
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Selecciona un periodo",
                     style: TextStyle(
-                      color: Color(0xFF9D65FF),
-                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final newPeriod = await Navigator.push<AcademicPeriod>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AddPeriodScreen(),
+                  const SizedBox(height: 16),
+                  if (periods.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Text(
+                        "Aún no tienes periodos creados. Ve a Periodos para crear uno.",
+                        style: TextStyle(color: AppColors.hint),
                       ),
-                    );
-                    if (newPeriod != null) {
-                      setState(() => selectedPeriod = newPeriod);
-                    }
-                  },
-                ),
-              ],
-            ),
+                    )
+                  else
+                    ...periods.map(
+                      (period) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          period.name,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          "${_formatDate(period.startDate)} - ${_formatDate(period.endDate)}",
+                          style: const TextStyle(color: AppColors.hint),
+                        ),
+                        onTap: () => Navigator.pop(ctx, period),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
 
     if (result != null) {
@@ -102,64 +149,115 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     }
   }
 
-  void createCourse() {
-    final name = nameController.text;
+  Future<void> _saveCourse() async {
+    if (_isSaving) return;
 
+    final name = nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("El nombre es obligatorio")),
-      );
+      _showSnack("El nombre es obligatorio");
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Curso creado correctamente")),
-    );
+    // Se debe validar que al menos un día se haya seleccionado
+    final scheduleDays = <int>[];
+    for (var i = 0; i < selectedDays.length; i++) {
+      if (selectedDays[i]) scheduleDays.add(i);
+    }
+    if (scheduleDays.isEmpty) {
+      _showSnack("Selecciona al menos un día de la semana");
+      return;
+    }
 
-    Navigator.pop(context);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showSnack("No hay usuario autenticado");
+      return;
+    }
+
+    final periodId = isAcademicPeriodEnabled ? selectedPeriod?.id : null;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final now = DateTime.now();
+
+      if (widget.isEditing) {
+        final original = widget.course!;
+        final updated = Course(
+          id: original.id,
+          userId: original.userId,
+          academicPeriodId: periodId,
+          name: name,
+          scheduleDays: scheduleDays,
+          createdAt: original.createdAt,
+          updatedAt: now,
+        );
+        await _courseRepo.update(updated);
+      } else {
+        final newCourse = Course(
+          userId: user.uid,
+          academicPeriodId: periodId,
+          name: name,
+          scheduleDays: scheduleDays,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await _courseRepo.create(newCourse);
+      }
+
+      if (!mounted) return;
+      _showSnack(
+        widget.isEditing
+            ? "Curso actualizado correctamente"
+            : "Curso creado correctamente",
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack("Error al guardar: $e");
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.isEditing ? "Editar Curso" : "Crear Curso";
+    final buttonText = widget.isEditing ? "Guardar Cambios" : "Crear Curso";
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const DarkAppBar(title: "Crear Curso"),
+      appBar: DarkAppBar(title: title),
       body: SafeArea(
         child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Course name
-                  const AppLabel(text:"NOMBRE DEL CURSO"),
-                  const SizedBox(height: 8),
-                  AppTextField(
-                    controller: nameController, 
-                    hint: "Ej. Aplicaciones Móviles"
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Academic Period Section
-                  _buildAcademicPeriodSection(),
-
-                  const SizedBox(height: 24),
-
-                  // Weekly Schedule Section
-                  _buildWeeklyScheduleSection(),
-
-                  const SizedBox(height: 50),
-                  
-                  // Button
-                  PrimaryGradientButton(
-                    text: "Crear Curso", 
-                    onPressed: createCourse,
-                    glow: true,
-                  )
-                ],
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppLabel(text: "NOMBRE DEL CURSO"),
+              const SizedBox(height: 8),
+              AppTextField(
+                controller: nameController,
+                hint: "Ej. Aplicaciones Móviles",
               ),
-            ),
+              const SizedBox(height: 24),
+
+              _buildAcademicPeriodSection(),
+              const SizedBox(height: 24),
+
+              _buildWeeklyScheduleSection(),
+              const SizedBox(height: 50),
+
+              PrimaryGradientButton(
+                text: _isSaving ? "Guardando..." : buttonText,
+                onPressed: _isSaving ? null : _saveCourse,
+                glow: true,
+              ),
+            ],
+          ),
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildAcademicPeriodSection() {
@@ -169,17 +267,14 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
+            const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AppLabel(text:"PERIODO ACADÉMICO"),
-                const SizedBox(height: 4),
-                const Text(
+                AppLabel(text: "PERIODO ACADÉMICO"),
+                SizedBox(height: 4),
+                Text(
                   "Selecciona el ciclo al que pertenece este curso",
-                  style: TextStyle(
-                    color: Color(0xFF5A5A62),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: AppColors.hint, fontSize: 12),
                 ),
               ],
             ),
@@ -193,21 +288,21 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                     if (!value) selectedPeriod = null;
                   });
                 },
-                activeThumbColor: const Color(0xFF9D65FF),
+                activeThumbColor: AppColors.purplePrimary,
               ),
             ),
           ],
         ),
         if (isAcademicPeriodEnabled) ...[
           const SizedBox(height: 16),
-          const AppLabel(text:"PERIODO"),
+          const AppLabel(text: "PERIODO"),
           const SizedBox(height: 8),
           GestureDetector(
             onTap: _openPeriodSelector,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
               decoration: BoxDecoration(
-                color: const Color(0xFF232329),
+                color: AppColors.inputFill,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -218,13 +313,13 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                       style: TextStyle(
                         color: selectedPeriod != null
                             ? Colors.white
-                            : const Color(0xFF5A5A62),
+                            : AppColors.hint,
                       ),
                     ),
                   ),
                   const Icon(
                     Icons.keyboard_arrow_down,
-                    color: Color(0xFF9D65FF),
+                    color: AppColors.purplePrimary,
                     size: 22,
                   ),
                 ],
@@ -234,11 +329,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           if (selectedPeriod != null) ...[
             const SizedBox(height: 8),
             Text(
-              "${selectedPeriod!.startDate} - ${selectedPeriod!.endDate}",
-              style: const TextStyle(
-                color: Color(0xFF5A5A62),
-                fontSize: 12,
-              ),
+              "${_formatDate(selectedPeriod!.startDate)} - ${_formatDate(selectedPeriod!.endDate)}",
+              style: const TextStyle(color: AppColors.hint, fontSize: 12),
             ),
           ],
         ],
@@ -246,65 +338,25 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     );
   }
 
+  // Selector de dias siempre visible
   Widget _buildWeeklyScheduleSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const AppLabel(text:"HORARIO SEMANAL"),
-            Transform.scale(
-              scale: 0.8,
-              child: Switch(
-                value: isWeeklyScheduleEnabled,
-                onChanged: (value) {
-                  setState(() => isWeeklyScheduleEnabled = value);
-                },
-                activeThumbColor: const Color(0xFF9D65FF),
-              ),
-            ),
-          ],
+        const AppLabel(text: "HORARIO SEMANAL"),
+        const SizedBox(height: 4),
+        const Text(
+          "Selecciona los días en que se imparte el curso",
+          style: TextStyle(color: AppColors.hint, fontSize: 12),
         ),
-        if (isWeeklyScheduleEnabled) ...[
-          const SizedBox(height: 16),
-          _daysSelector(),
-        ],
-      ],
-    );
-  }
-
-  Widget _daysSelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(days.length, (index) {
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              selectedDays[index] = !selectedDays[index];
-            });
+        const SizedBox(height: 16),
+        DaysSelector(
+          selectedDays: selectedDays,
+          onSelectionChanged: (updatedDays) {
+            setState(() => selectedDays = updatedDays);
           },
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: selectedDays[index]
-                  ? const Color(0xFF9D65FF)
-                  : const Color(0xFF232329),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                days[index],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
+        ),
+      ],
     );
   }
 }

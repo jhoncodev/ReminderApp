@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/features/auth/login_screen.dart';
 
 
@@ -11,7 +12,7 @@ class MyApp extends StatelessWidget{
       title: 'Reminder App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.purplePrimary),
         useMaterial3: true,
       ),
       home: const LoginScreen(),

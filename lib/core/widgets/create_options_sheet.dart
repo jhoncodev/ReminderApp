@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/features/home/activity_screen.dart';
 import 'package:reminder_app/features/home/course_screen.dart';
+import 'package:reminder_app/features/home/create_activity_screen.dart';
 import 'package:reminder_app/features/home/period_screen.dart';
 
 class CreateOptionsSheet {
   CreateOptionsSheet._();
 
-  static Future<void> show(BuildContext context){
+  static Future<void> show(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.background,
@@ -20,11 +21,11 @@ class CreateOptionsSheet {
   }
 }
 
-class _SheetContent extends StatelessWidget{
+class _SheetContent extends StatelessWidget {
   const _SheetContent();
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
@@ -47,40 +48,40 @@ class _SheetContent extends StatelessWidget{
               iconBackground: AppColors.cyan,
               title: "Actividad",
               subtitle: "Pagos, tareas recurrentes, eventos",
-              onTap: (){
+              onTap: () {
                 Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (_) => const ActivityScreen())
+                  context,
+                  MaterialPageRoute(builder: (_) => const ActivityScreen()),
                 );
               },
             ),
             const SizedBox(height: 16),
 
             _OptionCard(
-              icon: Icons.school, 
-              iconBackground: AppColors.purplePrimary, 
-              title: "Curso", 
-              subtitle: "Clases, horarios, materias", 
-              onTap: (){
+              icon: Icons.school,
+              iconBackground: AppColors.purplePrimary,
+              title: "Curso",
+              subtitle: "Clases, horarios, materias",
+              onTap: () {
                 Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (_) => const CourseScreen())
+                  context,
+                  MaterialPageRoute(builder: (_) => const CourseScreen()),
                 );
-              }
+              },
             ),
             const SizedBox(height: 16),
 
             _OptionCard(
-              icon: Icons.calendar_month, 
-              iconBackground: AppColors.organe, 
-              title: "Periodo", 
+              icon: Icons.calendar_month,
+              iconBackground: AppColors.organe,
+              title: "Periodo",
               subtitle: "Ciclos académicos, semestres",
-              onTap: (){
+              onTap: () {
                 Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (_) => const PeriodScreen())
+                  context,
+                  MaterialPageRoute(builder: (_) => const PeriodScreen()),
                 );
-              }
+              },
             ),
             const SizedBox(height: 24),
 
@@ -92,9 +93,9 @@ class _SheetContent extends StatelessWidget{
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: TextButton(
-                  onPressed: () => Navigator.pop(context), 
+                  onPressed: () => Navigator.pop(context),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16)
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: const Text(
                     "Cancelar",
@@ -103,18 +104,18 @@ class _SheetContent extends StatelessWidget{
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
-                  )
+                  ),
                 ),
               ),
-            )
+            ),
           ],
         ),
-      )
+      ),
     );
   }
 }
 
-class _OptionCard extends StatelessWidget{
+class _OptionCard extends StatelessWidget {
   final IconData icon;
   final Color iconBackground;
   final String title;
@@ -126,7 +127,7 @@ class _OptionCard extends StatelessWidget{
     required this.iconBackground,
     required this.title,
     required this.subtitle,
-    required this.onTap
+    required this.onTap,
   });
 
   @override
@@ -173,15 +174,12 @@ class _OptionCard extends StatelessWidget{
 
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: AppColors.hint,
-                      fontSize: 13
-                    ),
+                    style: const TextStyle(color: AppColors.hint, fontSize: 13),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.hint)
+            const Icon(Icons.chevron_right, color: AppColors.hint),
           ],
         ),
       ),

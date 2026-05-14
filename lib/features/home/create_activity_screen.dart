@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
@@ -5,15 +6,21 @@ import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/core/widgets/days_selector.dart';
+import 'package:reminder_app/data/activity_repository.dart';
+import 'package:reminder_app/models/activity.dart';
 
 class CreateActivityScreen extends StatefulWidget {
-  const CreateActivityScreen({super.key});
+  final Activity? activity;
+  const CreateActivityScreen({super.key, this.activity});
+
+  bool get isEditing => activity != null;
 
   @override
   State<CreateActivityScreen> createState() => _CreateActivityScreenState();
 }
 
 class _CreateActivityScreenState extends State<CreateActivityScreen> {
+  final _activityRepo = ActivityRepository();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
@@ -21,6 +28,26 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
   String frequency = "Una vez";
   List<String> days = ["L", "M", "M", "J", "V", "S", "D"];
   List<bool> selectedDays = List.generate(7, (_) => false);
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.activity;
+    if (existing == null) return;
+
+    nameController.text = existing.name;
+    notesController.text = existing.notes ?? '';
+    amountController.text = existing.budgetAmount?.toString() ?? '';
+    frequency = existing.frequency;
+
+    // Días prellenados
+    for (final day in existing.scheduleDays) {
+      if (day >= 0 && day < selectedDays.length) {
+        selectedDays[day] = true;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -30,28 +57,98 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
     super.dispose();
   }
 
-  void createActivity() {
-    final name = nameController.text;
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
+  Future<void> _saveActivity() async {
+    if (_isSaving) return;
+
+    final name = nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("El nombre es obligatorio")),
-      );
+      _showSnack("El nombre es obligatorio");
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Actividad creada correctamente")),
-    );
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showSnack("No hay usuario autenticado");
+      return;
+    }
 
-    Navigator.pop(context);
+    // Se extrae los índices de los días seleccionados
+    final scheduleDays = <int>[];
+    for (var i = 0; i < selectedDays.length; i++) {
+      if (selectedDays[i]) scheduleDays.add(i);
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final now = DateTime.now();
+      double? budgetAmount;
+
+      if (amountController.text.isNotEmpty) {
+        budgetAmount = double.tryParse(amountController.text);
+      }
+
+      if (widget.isEditing) {
+        final original = widget.activity!;
+        final updated = Activity(
+          id: original.id,
+          userId: original.userId,
+          name: name,
+          notes: notesController.text.trim().isEmpty
+              ? null
+              : notesController.text.trim(),
+          budgetAmount: budgetAmount,
+          frequency: frequency,
+          scheduleDays: scheduleDays,
+          createdAt: original.createdAt,
+          updatedAt: now,
+        );
+        await _activityRepo.update(updated);
+      } else {
+        final newActivity = Activity(
+          userId: user.uid,
+          name: name,
+          notes: notesController.text.trim().isEmpty
+              ? null
+              : notesController.text.trim(),
+          budgetAmount: budgetAmount,
+          frequency: frequency,
+          scheduleDays: scheduleDays,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await _activityRepo.create(newActivity);
+      }
+
+      if (!mounted) return;
+      _showSnack(
+        widget.isEditing
+            ? "Actividad actualizada correctamente"
+            : "Actividad creada correctamente",
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack("Error al guardar: $e");
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.isEditing ? "Editar Actividad" : "Crear Actividad";
+    final buttonText = widget.isEditing ? "Guardar Cambios" : "Crear Actividad";
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const DarkAppBar(title: "Crear Actividad"),
+      appBar: DarkAppBar(title: title),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -59,20 +156,20 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Acitivity name
-              const AppLabel(text:"NOMBRE DE LA ACTIVIDAD"),
+              const AppLabel(text: "NOMBRE DE LA ACTIVIDAD"),
               const SizedBox(height: 8),
               AppTextField(
-                controller: nameController, 
-                hint: "Ej. Sesión de Yoga"
+                controller: nameController,
+                hint: "Ej. Sesión de Yoga",
               ),
 
               const SizedBox(height: 20),
 
               // Notes
-              const AppLabel(text:"NOTAS / DETALLES"),
+              const AppLabel(text: "NOTAS / DETALLES"),
               const SizedBox(height: 8),
               AppTextField(
-                controller: notesController, 
+                controller: notesController,
                 hint: "Detalles adicionales ...",
                 maxLines: 3,
               ),
@@ -80,10 +177,10 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               const SizedBox(height: 20),
 
               // Amount
-              const AppLabel(text:"PRESUPUESTO"),
+              const AppLabel(text: "PRESUPUESTO"),
               const SizedBox(height: 8),
               AppTextField(
-                controller: amountController, 
+                controller: amountController,
                 hint: "Monto (opcional)",
                 keyboardType: TextInputType.number,
               ),
@@ -91,14 +188,14 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               const SizedBox(height: 24),
 
               // Frequency
-              const AppLabel(text:"FRECUENCIA"),
+              const AppLabel(text: "FRECUENCIA"),
               const SizedBox(height: 8),
               _frequencySelector(),
 
               const SizedBox(height: 20),
 
               // Days
-              const AppLabel(text:"DÍAS SELECCIONADOS"),
+              const AppLabel(text: "DÍAS SELECCIONADOS"),
               const SizedBox(height: 8),
               DaysSelector(
                 selectedDays: selectedDays,
@@ -113,10 +210,10 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
 
               // Create button
               PrimaryGradientButton(
-                text: "Crear Actividad", 
-                onPressed: createActivity,
+                text: buttonText,
+                onPressed: _isSaving ? null : _saveActivity,
                 glow: true,
-              )
+              ),
             ],
           ),
         ),
@@ -142,7 +239,9 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: selected ? const Color(0xFF9D65FF) : const Color(0xFF232329),
+                color: selected
+                    ? const Color(0xFF9D65FF)
+                    : const Color(0xFF232329),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Center(
@@ -159,5 +258,4 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
       }).toList(),
     );
   }
-
 }

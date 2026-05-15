@@ -24,6 +24,8 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
+  final TextEditingController startTimeController = TextEditingController();
+  DateTime? _selectedDate;
 
   String frequency = "Una vez";
   List<String> days = ["L", "M", "M", "J", "V", "S", "D"];
@@ -54,6 +56,8 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
     nameController.dispose();
     notesController.dispose();
     amountController.dispose();
+    startTimeController.dispose();
+    _selectedDate = null;
     super.dispose();
   }
 
@@ -106,6 +110,10 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
           budgetAmount: budgetAmount,
           frequency: frequency,
           scheduleDays: scheduleDays,
+          startTime: startTimeController.text.isEmpty
+              ? null
+              : startTimeController.text,
+          date: frequency == 'Una vez' ? _selectedDate : null,
           createdAt: original.createdAt,
           updatedAt: now,
         );
@@ -122,6 +130,10 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
           scheduleDays: scheduleDays,
           createdAt: now,
           updatedAt: now,
+          startTime: startTimeController.text.isEmpty
+              ? null
+              : startTimeController.text,
+          date: frequency == 'Una vez' ? _selectedDate : null,
         );
         await _activityRepo.create(newActivity);
       }
@@ -205,9 +217,77 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
                   });
                 },
               ),
-
+              const AppLabel(text: "HORA DE INICIO"),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      startTimeController.text =
+                          '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                    });
+                  }
+                },
+                child: AbsorbPointer(
+                  child: AppTextField(
+                    controller: startTimeController,
+                    hint: "Ej. 09:00",
+                  ),
+                ),
+              ),
               const SizedBox(height: 32),
-
+              if (frequency == "Una vez") ...[
+                const SizedBox(height: 20),
+                const AppLabel(text: "FECHA"),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() => _selectedDate = picked);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF232329),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _selectedDate != null
+                              ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                              : 'Seleccionar fecha',
+                          style: TextStyle(
+                            color: _selectedDate != null
+                                ? Colors.white
+                                : Colors.grey,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.calendar_today,
+                          color: Colors.grey,
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               // Create button
               PrimaryGradientButton(
                 text: buttonText,

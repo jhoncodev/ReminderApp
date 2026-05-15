@@ -58,6 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           .collection('users')
           .doc(userCredential.user!.uid) 
           .set({
+        'name': fullNameController.text.trim(),
         'email': emailController.text.trim(),
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),

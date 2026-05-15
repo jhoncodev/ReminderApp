@@ -38,6 +38,7 @@ class ActivityRepository {
   // que es el documento automaticamente
   Future<void> create(Activity activity) async {
     await _activitiesRef.add(activity);
+    
   }
 
   // Método para actualizar una actividad por completo, se requiere que la

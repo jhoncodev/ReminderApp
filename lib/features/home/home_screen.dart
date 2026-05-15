@@ -1,9 +1,62 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/create_options_sheet.dart';
+import 'package:reminder_app/data/schedule_repository.dart';
+import 'package:reminder_app/data/user_repository.dart';
+import 'package:reminder_app/models/schedule_item.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreen();
+}
+
+class _HomeScreen extends State<HomeScreen> {
+  final _userRepository = UserRepository();
+  String _displayName = 'Usuario';
+  final _scheduleRepository = ScheduleRepository();
+  List<ScheduleItem> _todayList = [];
+  List<ScheduleItem> _upcomingList = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+    _loadSchedule();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+    final user = await _userRepository.getCurrentUser(userId);
+    setState(() {
+      _displayName = user?.name ?? 'Usuario';
+    });
+  }
+
+  Future<void> _loadSchedule() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    print('DEBUG userId: $userId'); // check user is logged in
+
+    if (userId == null) return;
+
+    final results = await Future.wait([
+      _scheduleRepository.getTodaySchedule(userId),
+      _scheduleRepository.getUpcomingSchedule(userId),
+    ]);
+
+    print('DEBUG today: ${results[0].length} items'); // how many found
+    print('DEBUG upcoming: ${results[1].length} items'); // how many found
+
+    setState(() {
+      _todayList = results[0];
+      _upcomingList = results[1];
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,25 +83,43 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              _buildScheduleCard(
-                time: '09:00',
-                title: 'Morning Meditation',
-                subtitle: 'Mental Health Activities',
-                accentColor: const Color(0xFF4EE6D3), // Cyan
-              ),
-              _buildScheduleCard(
-                time: '11:30',
-                title: 'Modern Architecture 101',
-                subtitle: 'Design Course • Zoom',
-                accentColor: const Color(0xFFB483FF), // Purple
-                icon: Icons.school_outlined,
-              ),
-              _buildScheduleCard(
-                time: '14:00',
-                title: 'Renew Subscription',
-                subtitle: 'Finance Reminder',
-                accentColor: const Color(0xFFFFB054), // Orange
-              ),
+
+              // _buildScheduleCard(
+              //   time: '09:00',
+              //   title: 'Morning Meditation',
+              //   subtitle: 'Mental Health Activities',
+              //   accentColor: const Color(0xFF4EE6D3), // Cyan
+              // ),
+              // _buildScheduleCard(
+              //   time: '11:30',
+              //   title: 'Modern Architecture 101',
+              //   subtitle: 'Design Course • Zoom',
+              //   accentColor: const Color(0xFFB483FF), // Purple
+              //   icon: Icons.school_outlined,
+              // ),
+              // _buildScheduleCard(
+              //   time: '14:00',
+              //   title: 'Renew Subscription',
+              //   subtitle: 'Finance Reminder',
+              //   accentColor: const Color(0xFFFFB054), // Orange
+              // ),
+              if (_isLoading)
+                const Center(child: CircularProgressIndicator())
+              else if (_todayList.isEmpty)
+                const Text(
+                  'No schedule for today',
+                  style: TextStyle(color: Colors.white54),
+                )
+              else
+                ..._todayList.map(
+                  (item) => _buildScheduleCard(
+                    time: item.time,
+                    title: item.title,
+                    subtitle: item.subtitle,
+                    accentColor: item.accentColor,
+                    icon: item.icon,
+                  ),
+                ),
 
               const SizedBox(height: 40),
 
@@ -82,24 +153,29 @@ class HomeScreen extends StatelessWidget {
               // Upcoming Horizontal List
               SizedBox(
                 height: 140,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _buildUpcomingCard(
-                      title: 'Gym Session',
-                      subtitle: 'Tomorrow, 07:00',
-                      icon: Icons.fitness_center,
-                      accentColor: const Color(0xFF4EE6D3),
-                    ),
-                    const SizedBox(width: 16),
-                    _buildUpcomingCard(
-                      title: 'UI Logic M...',
-                      subtitle: 'Wed, 18:30',
-                      icon: Icons.code,
-                      accentColor: const Color(0xFFB483FF),
-                    ),
-                  ],
-                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _upcomingList.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Nothing upcoming',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      )
+                    : ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _upcomingList.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 16),
+                        itemBuilder: (_, i) {
+                          final item = _upcomingList[i];
+                          return _buildUpcomingCard(
+                            title: item.title,
+                            subtitle: item.subtitle,
+                            icon: item.icon,
+                            accentColor: item.accentColor,
+                          );
+                        },
+                      ),
               ),
             ],
           ),
@@ -136,7 +212,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   'BIENVENIDO',
                   style: TextStyle(
@@ -147,7 +223,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Hola, Alex 👋',
+                  'Hola, $_displayName 👋',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,

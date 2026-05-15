@@ -4,12 +4,14 @@ class Activity {
   final String? id;
   final String userId;
   final String name;
-  final String? notes; 
-  final double? budgetAmount; 
+  final String? notes;
+  final double? budgetAmount;
   final String frequency;
   final List<int> scheduleDays;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? startTime; // "HH:mm"
+  final DateTime? date;
 
   Activity({
     this.id,
@@ -21,6 +23,8 @@ class Activity {
     required this.scheduleDays,
     required this.createdAt,
     required this.updatedAt,
+    this.startTime,
+    this.date,
   });
 
   // Convertimos el documento de Activity que traemos de firestore
@@ -28,7 +32,7 @@ class Activity {
   factory Activity.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
     SnapshotOptions? options,
-  ){
+  ) {
     final data = snapshot.data()!;
     return Activity(
       id: snapshot.id,
@@ -40,13 +44,15 @@ class Activity {
       scheduleDays: List<int>.from(data['scheduleDays'] ?? []),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      startTime: data['startTime'] as String?,
+      date: data['date'] != null ? (data['date'] as Timestamp).toDate() : null,
     );
   }
 
   // Convertimos el objeto de tipo Activity a un documento para
   // poder subirlo a firestore
-  Map<String, dynamic> toFirestore(){
-    return{
+  Map<String, dynamic> toFirestore() {
+    return {
       'userId': userId,
       'name': name,
       if (notes != null) 'notes': notes,
@@ -55,6 +61,8 @@ class Activity {
       'scheduleDays': scheduleDays,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
+      if (startTime != null) 'startTime': startTime,
+      if (date != null) 'date': Timestamp.fromDate(date!),
     };
   }
 }

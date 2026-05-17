@@ -19,7 +19,6 @@ class UserRepository {
       }
       return null;
     } catch (e) {
-      print('Error fetching user: $e');
       return null;
     }
   }

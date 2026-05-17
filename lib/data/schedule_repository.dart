@@ -94,7 +94,6 @@ class ScheduleRepository {
         .where('userId', isEqualTo: userId) // camelCase
         .get();
 
-    print('DEBUG activities found: ${activitiesSnap.docs.length}');
 
     final List<ScheduleItem> items = [];
 

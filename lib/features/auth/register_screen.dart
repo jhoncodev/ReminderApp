@@ -113,6 +113,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User created successfully!')),
         );
+
+        // Clean inputs
+        fullNameController.clear();
+        emailController.clear();
+        passwordController.clear();
+        confirmPasswordController.clear();
+        setState(() => _selectedAvatar = 'anonimo');
+
+        // Return login
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -124,22 +134,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
     
-  }
-
-  void registerUser(){
-    final password = passwordController.text;
-    final confirmPassowrd = confirmPasswordController.text;
-
-    if(password != confirmPassowrd){
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Las contraseñas no coinciden")),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Registro exitoso")),
-    );
   }
   
   @override

@@ -234,12 +234,12 @@ Cada integrante elige según prioridad e interés. Marcar con [x] al completar y
 - [x] Mostrar avatar elegido en `HomeScreen._buildHeader` (reemplazar `CircleAvatar` placeholder).
 
 ### Bloque B - Bugs y cerrar sesión
-- [ ] Cambiar `Navigator.push` por `Navigator.pushReplacement` en `login_screen.dart`.
-- [ ] En `register_screen.dart`: limpiar controllers + `Navigator.pop` tras registro exitoso.
-- [ ] Implementar menú al tocar avatar en home (opciones: "Cerrar Sesión").
-- [ ] `FirebaseAuth.instance.signOut()` + `pushReplacement` a `LoginScreen`.
-- [ ] Eliminar funciones muertas: `loginAccess` en login, `registerUser` (sin guion bajo) en register.
-- [ ] Quitar `print('DEBUG ...')` de `home_screen.dart` y `schedule_repository.dart`.
+- [x] Cambiar `Navigator.push` por `Navigator.pushReplacement` en `login_screen.dart`.
+- [x] En `register_screen.dart`: limpiar controllers + `Navigator.pop` tras registro exitoso.
+- [x] Implementar menú al tocar avatar en home (opciones: "Cerrar Sesión").
+- [x] `FirebaseAuth.instance.signOut()` + `pushReplacement` a `LoginScreen`.
+- [x] Eliminar funciones muertas: `loginAccess` en login, `registerUser` (sin guion bajo) en register.
+- [x] Quitar `print('DEBUG ...')` de `home_screen.dart` y `schedule_repository.dart`.
 
 ### Bloque C - Horarios por día en cursos
 - [ ] Crear modelo `CourseSession` en `lib/models/course_session.dart`.
@@ -251,7 +251,7 @@ Cada integrante elige según prioridad e interés. Marcar con [x] al completar y
 
 ### Bloque D - Pantalla Schedule semanal
 - [ ] Crear `lib/features/schedule/schedule_screen.dart`.
-- [ ] Implementar grid de horario semanal (columnas = días Lun-Dom, filas = horas 6am-10pm).
+- [ ] Implementar grid de horario semanal (columnas = días Lun-Dom, filas = horas 12am-12am).
 - [ ] Renderizar cursos como cards posicionadas (`Stack` + `Positioned`).
 - [ ] Conectar botón "HORARIO" del bottom nav de `home_screen.dart` a la nueva pantalla.
 

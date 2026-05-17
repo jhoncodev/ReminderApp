@@ -4,6 +4,7 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/create_options_sheet.dart';
 import 'package:reminder_app/data/schedule_repository.dart';
 import 'package:reminder_app/data/user_repository.dart';
+import 'package:reminder_app/features/auth/login_screen.dart';
 import 'package:reminder_app/models/schedule_item.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -41,7 +42,6 @@ class _HomeScreen extends State<HomeScreen> {
 
   Future<void> _loadSchedule() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
-    print('DEBUG userId: $userId'); // check user is logged in
 
     if (userId == null) return;
 
@@ -50,14 +50,48 @@ class _HomeScreen extends State<HomeScreen> {
       _scheduleRepository.getUpcomingSchedule(userId),
     ]);
 
-    print('DEBUG today: ${results[0].length} items'); // how many found
-    print('DEBUG upcoming: ${results[1].length} items'); // how many found
-
     setState(() {
       _todayList = results[0];
       _upcomingList = results[1];
       _isLoading = false;
     });
+  }
+
+  Future<void> _showAvatarMenu(Offset position) async {
+    final selected = await showMenu(
+      context: context, 
+      color: AppColors.card,
+      position: RelativeRect.fromLTRB(
+        position.dx, position.dy, position.dx, position.dy
+      ),
+      items: const[
+        PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout,color: Colors.redAccent),
+              SizedBox(width: 12),
+              Text(
+                'Cerrar Sesión',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    if(selected == 'logout'){
+      await _logout();
+    }
+  }
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    if(!mounted) return;
+    Navigator.pushReplacement(
+      context, 
+      MaterialPageRoute(builder: (_) => const LoginScreen())
+    );
   }
 
   @override
@@ -86,25 +120,6 @@ class _HomeScreen extends State<HomeScreen> {
               ),
               const SizedBox(height: 24),
 
-              // _buildScheduleCard(
-              //   time: '09:00',
-              //   title: 'Morning Meditation',
-              //   subtitle: 'Mental Health Activities',
-              //   accentColor: const Color(0xFF4EE6D3), // Cyan
-              // ),
-              // _buildScheduleCard(
-              //   time: '11:30',
-              //   title: 'Modern Architecture 101',
-              //   subtitle: 'Design Course • Zoom',
-              //   accentColor: const Color(0xFFB483FF), // Purple
-              //   icon: Icons.school_outlined,
-              // ),
-              // _buildScheduleCard(
-              //   time: '14:00',
-              //   title: 'Renew Subscription',
-              //   subtitle: 'Finance Reminder',
-              //   accentColor: const Color(0xFFFFB054), // Orange
-              // ),
               if (_isLoading)
                 const Center(child: CircularProgressIndicator())
               else if (_todayList.isEmpty)
@@ -203,10 +218,13 @@ class _HomeScreen extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: AppColors.inputFill,
-              backgroundImage: AssetImage('assets/avatars/$_avatarIcon.png'),
+            GestureDetector(
+              onTapDown: (details) => _showAvatarMenu(details.globalPosition),
+              child: CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.inputFill,
+                backgroundImage: AssetImage('assets/avatars/$_avatarIcon.png'),
+              ),
             ),
             const SizedBox(width: 16),
             Column(

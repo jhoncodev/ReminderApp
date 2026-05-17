@@ -20,6 +20,7 @@ class _HomeScreen extends State<HomeScreen> {
   List<ScheduleItem> _todayList = [];
   List<ScheduleItem> _upcomingList = [];
   bool _isLoading = true;
+  String _avatarIcon = 'anonimo';
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _HomeScreen extends State<HomeScreen> {
     final user = await _userRepository.getCurrentUser(userId);
     setState(() {
       _displayName = user?.name ?? 'Usuario';
+      _avatarIcon = user?.avatarIcon ?? 'anonimo';
     });
   }
 
@@ -165,7 +167,7 @@ class _HomeScreen extends State<HomeScreen> {
                     : ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: _upcomingList.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 16),
+                        separatorBuilder: (_, _) => const SizedBox(width: 16),
                         itemBuilder: (_, i) {
                           final item = _upcomingList[i];
                           return _buildUpcomingCard(
@@ -201,20 +203,17 @@ class _HomeScreen extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 24,
-              backgroundColor: Color(0xFF232329),
-              child: Icon(
-                Icons.person,
-                color: Colors.white54,
-              ), // Placeholder for image
+              backgroundColor: AppColors.inputFill,
+              backgroundImage: AssetImage('assets/avatars/$_avatarIcon.png'),
             ),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'BIENVENIDO',
+                  'Bienvenido',
                   style: TextStyle(
                     color: Colors.grey,
                     fontSize: 10,
@@ -223,7 +222,7 @@ class _HomeScreen extends State<HomeScreen> {
                   ),
                 ),
                 Text(
-                  'Hola, $_displayName 👋',
+                  '$_displayName!',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,

@@ -3,6 +3,7 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_password_field.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
+import 'package:reminder_app/core/widgets/avatar_selector.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,6 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
+  String _selectedAvatar = 'anonimo';
   bool _isLoading = false;
   
   @override
@@ -29,6 +31,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
     passwordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openAvatarPicker() async {
+    await showModalBottomSheet(
+      context: context, 
+      backgroundColor: AppColors.background,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28))
+      ),
+      builder: (sheetContext){
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Elige tu Avatar',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  AvatarSelector(
+                    selectedAvatar: _selectedAvatar, 
+                    onAvatarSelected: (avatar){
+                      setState(() => _selectedAvatar = avatar);
+                      Navigator.pop(sheetContext);
+                    }
+                  )
+                ],
+              ),
+            ),
+          )
+        );
+      }
+    );
   }
 
   Future<void> _registerUser() async {
@@ -52,7 +97,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
-      
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -60,8 +104,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           .set({
         'name': fullNameController.text.trim(),
         'email': emailController.text.trim(),
-        'created_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
+        'avatarIcon': _selectedAvatar,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
@@ -108,28 +153,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children:[
-              // Title and subtitle
-              const Text(
-                'Recuérdalo',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                ),
+              Center(
+                child: GestureDetector(
+                  onTap: _openAvatarPicker,
+                  child: Column(
+                    children: [
+                      Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 56,
+                            backgroundColor: AppColors.card,
+                            backgroundImage: AssetImage(
+                              'assets/avatars/$_selectedAvatar.png'
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.purplePrimary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.background, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.edit,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Toca para cambiar',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
               ),
-              const SizedBox(height: 8),
-
-              const Text(
-                'Empieza a capturar tus intenciones y organiza tu día con precisión',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 40),
-
+              const SizedBox(height: 32),
               // Full name
-              const AppLabel(text:'NOMBRE COMPLETO'),
+              const AppLabel(text:'Nombre Completo'),
               const SizedBox(height: 8),
               AppTextField(
                 controller: fullNameController, 
@@ -138,7 +206,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
 
               // Email
-              const AppLabel(text:"CORREO ELECTRÓNICO"),
+              const AppLabel(text:"Correo Electrónico"),
               const SizedBox(height: 8),
               AppTextField(
                 controller: emailController, 
@@ -147,13 +215,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
 
               // Password
-              const AppLabel(text:"CONTRASEÑA"),
+              const AppLabel(text:"Contraseña"),
               const SizedBox(height: 8),
               AppPasswordField(controller: passwordController),
               const SizedBox(height: 20),
 
               // Confirm Password
-              const AppLabel(text:"CONFIRMAR CONTRASEÑA"),
+              const AppLabel(text:"Confirmar Contraseña"),
               const SizedBox(height: 8),
               AppPasswordField(controller: confirmPasswordController),
               const SizedBox(height: 32),

@@ -4,14 +4,14 @@ class User{
   final String? id;
   final String name;
   final String email;
-  final String? password;
+  final String? avatarIcon;
   final DateTime createdAt;
   final DateTime updatedAt;
   User({
     this.id,
     required this.name,
     required this.email,
-    this.password,
+    this.avatarIcon,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -25,9 +25,9 @@ class User{
       id: snapshot.id, 
       name: data['name'] as String,
       email: data['email'] as String,
-      //password: data['password'] as String,
-      createdAt: (data['created_at'] as Timestamp).toDate(),
-      updatedAt: (data['updated_at'] as Timestamp).toDate()
+      avatarIcon: data['avatarIcon'] as String?,
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      updatedAt: (data['updatedAt'] as Timestamp).toDate()
     );
   }
 
@@ -35,7 +35,7 @@ class User{
     return{
       'name': name,
       'email': email,
-      'password': password,
+      if (avatarIcon != null) 'avatarIcon':avatarIcon,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt)
     };

@@ -1,14 +1,16 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
-import 'package:reminder_app/core/widgets/days_selector.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
+import 'package:reminder_app/core/widgets/session_editor_sheet.dart';
 import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/models/course.dart';
+import 'package:reminder_app/models/course_session.dart';
 import 'package:reminder_app/models/period.dart';
 
 class CreateCourseScreen extends StatefulWidget {
@@ -25,12 +27,24 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   final _courseRepo = CourseRepository();
   final _periodRepo = PeriodRepository();
   final nameController = TextEditingController();
+  final noteController = TextEditingController();
 
   bool isAcademicPeriodEnabled = false;
   Period? selectedPeriod;
-  List<bool> selectedDays = List.generate(7, (_) => false);
+  List<CourseSession> _sessions = [];
 
   bool _isSaving = false;
+
+  static const _dayNames = [
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo'
+  ];
+
 
   @override
   void initState() {
@@ -39,13 +53,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     if (existing == null) return;
 
     nameController.text = existing.name;
-
-    // Dias prellenados
-    for (final day in existing.scheduleDays) {
-      if (day >= 0 && day < selectedDays.length) {
-        selectedDays[day] = true;
-      }
-    }
+    noteController.text = existing.note ?? '';
+    _sessions = List.from(existing.sessions);
 
     if (existing.academicPeriodId != null) {
       isAcademicPeriodEnabled = true;
@@ -59,7 +68,100 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   @override
   void dispose() {
     nameController.dispose();
+    noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _addSession() async {
+    final session = await SessionEditorSheet.show(context);
+    if (session != null) {
+      setState(() => _sessions.add(session));
+    }
+  }
+
+  Future<void> _editSession(int index) async {
+    final session = await SessionEditorSheet.show(
+      context,
+      initial: _sessions[index],
+    );
+    if (session != null) {
+      setState(() => _sessions[index] = session);
+    }
+  }
+
+  void _removeSession(int index) {
+    setState(() => _sessions.removeAt(index));
+  }
+
+  Future<void> _saveCourse() async {
+    if (_isSaving) return;
+
+    final name = nameController.text.trim();
+    if (name.isEmpty) {
+      _showSnack("El nombre es obligatorio");
+      return;
+    }
+
+    if (_sessions.isEmpty) {
+      _showSnack("Agrega al menos una sesión");
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showSnack("No hay usuario autenticado");
+      return;
+    }
+
+    final periodId = isAcademicPeriodEnabled ? selectedPeriod?.id : null;
+    final note = noteController.text.trim().isEmpty ? null : noteController.text.trim();
+
+    setState(() => _isSaving = true);
+
+    try {
+      final now = DateTime.now();
+
+      if (widget.isEditing) {
+        final original = widget.course!;
+        final updated = Course(
+          id: original.id,
+          userId: original.userId,
+          academicPeriodId: periodId,
+          name: name,
+          sessions: _sessions,
+          note: note,
+          createdAt: original.createdAt,
+          updatedAt: now,
+        );
+        
+        await _courseRepo.update(updated);
+      } else {
+        final newCourse = Course(
+          userId: user.uid,
+          academicPeriodId: periodId,
+          name: name,
+          sessions: _sessions,
+          note: note,
+          createdAt: now,
+          updatedAt: now,
+        );
+        
+        await _courseRepo.create(newCourse);
+      }
+
+      if (!mounted) return;
+      _showSnack(
+        widget.isEditing ? "Curso actualizado correctamente" : "Curso creado correctamente",
+      );
+      Navigator.pop(context);
+    
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack("Error al guardar: $e");
+    
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -149,77 +251,6 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     }
   }
 
-  Future<void> _saveCourse() async {
-    if (_isSaving) return;
-
-    final name = nameController.text.trim();
-    if (name.isEmpty) {
-      _showSnack("El nombre es obligatorio");
-      return;
-    }
-
-    // Se debe validar que al menos un día se haya seleccionado
-    final scheduleDays = <int>[];
-    for (var i = 0; i < selectedDays.length; i++) {
-      if (selectedDays[i]) scheduleDays.add(i);
-    }
-    if (scheduleDays.isEmpty) {
-      _showSnack("Selecciona al menos un día de la semana");
-      return;
-    }
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      _showSnack("No hay usuario autenticado");
-      return;
-    }
-
-    final periodId = isAcademicPeriodEnabled ? selectedPeriod?.id : null;
-
-    setState(() => _isSaving = true);
-
-    try {
-      final now = DateTime.now();
-
-      if (widget.isEditing) {
-        final original = widget.course!;
-        final updated = Course(
-          id: original.id,
-          userId: original.userId,
-          academicPeriodId: periodId,
-          name: name,
-          scheduleDays: scheduleDays,
-          createdAt: original.createdAt,
-          updatedAt: now,
-        );
-        await _courseRepo.update(updated);
-      } else {
-        final newCourse = Course(
-          userId: user.uid,
-          academicPeriodId: periodId,
-          name: name,
-          scheduleDays: scheduleDays,
-          createdAt: now,
-          updatedAt: now,
-        );
-        await _courseRepo.create(newCourse);
-      }
-
-      if (!mounted) return;
-      _showSnack(
-        widget.isEditing
-            ? "Curso actualizado correctamente"
-            : "Curso creado correctamente",
-      );
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      _showSnack("Error al guardar: $e");
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final title = widget.isEditing ? "Editar Curso" : "Crear Curso";
@@ -245,8 +276,11 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               _buildAcademicPeriodSection(),
               const SizedBox(height: 24),
 
-              _buildWeeklyScheduleSection(),
-              const SizedBox(height: 50),
+              _buildSessionsSection(),
+              const SizedBox(height: 24),
+
+              _buildNoteSection(),
+              const SizedBox(height: 40),
 
               PrimaryGradientButton(
                 text: _isSaving ? "Guardando..." : buttonText,
@@ -294,8 +328,6 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           ],
         ),
         if (isAcademicPeriodEnabled) ...[
-          const SizedBox(height: 16),
-          const AppLabel(text: "PERIODO"),
           const SizedBox(height: 8),
           GestureDetector(
             onTap: _openPeriodSelector,
@@ -338,23 +370,164 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     );
   }
 
-  // Selector de dias siempre visible
-  Widget _buildWeeklyScheduleSection() {
+  Widget _buildSessionsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppLabel(text: "HORARIO SEMANAL"),
+        const AppLabel(text: "SESIONES"),
         const SizedBox(height: 4),
         const Text(
-          "Selecciona los días en que se imparte el curso",
+          "Días y horarios del curso",
           style: TextStyle(color: AppColors.hint, fontSize: 12),
         ),
         const SizedBox(height: 16),
-        DaysSelector(
-          selectedDays: selectedDays,
-          onSelectionChanged: (updatedDays) {
-            setState(() => selectedDays = updatedDays);
-          },
+
+        // Lista de sesiones existentes
+        for (int i = 0; i < _sessions.length; i++) ...[
+          _buildSessionCard(_sessions[i], i),
+          const SizedBox(height: 12),
+        ],
+
+        // Botón "Agregar Sesión"
+        _buildAddSessionButton(),
+      ],
+    );
+  }
+
+  Widget _buildSessionCard(CourseSession session, int index) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      _dayNames[session.dayOfWeek],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (session.roomName != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.inputFill,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          session.roomName!,
+                          style: const TextStyle(
+                            color: AppColors.hint,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${formatTo12h(session.startTime)} → ${formatTo12h(session.endTime)}',
+                  style: const TextStyle(
+                    color: AppColors.hint,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _editSession(index),
+            icon: const Icon(
+              Icons.edit_outlined,
+              color: AppColors.purplePrimary,
+            ),
+            tooltip: "Editar",
+          ),
+          IconButton(
+            onPressed: () => _removeSession(index),
+            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            tooltip: "Eliminar",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddSessionButton() {
+    return GestureDetector(
+      onTap: _addSession,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.inputFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.purplePrimary.withValues(alpha: 0.3),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.add, color: AppColors.purplePrimary),
+            const SizedBox(width: 12),
+            const Text(
+              'Agregar Sesión',
+              style: TextStyle(
+                color: AppColors.purplePrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoteSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppLabel(text: "APUNTE (opcional)"),
+        const SizedBox(height: 4),
+        const Text(
+          "Notas o información extra del curso",
+          style: TextStyle(color: AppColors.hint, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: noteController,
+          maxLines: 4,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: "Ej. Llevar laptop los miércoles",
+            hintStyle: const TextStyle(color: AppColors.hint),
+            filled: true,
+            fillColor: AppColors.inputFill,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+          ),
         ),
       ],
     );

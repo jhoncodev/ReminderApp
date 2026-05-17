@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/features/home/create_course_screen.dart';
 import 'package:reminder_app/models/course.dart';
+import 'package:reminder_app/models/course_session.dart';
 
 class CourseScreen extends StatefulWidget {
   const CourseScreen({super.key});
@@ -17,11 +19,19 @@ class _CourseScreenState extends State<CourseScreen> {
 
   static const _dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
-  String _formatDays(List<int> days) {
-    if (days.isEmpty) return "Sin días";
-    return days.map((d) => _dayLabels[d]).join(", ");
+  String _formatSessions(List<CourseSession> sessions) {
+    if (sessions.isEmpty) return "Sin sesiones";
+    return sessions
+        .map((s) => '${_dayLabels[s.dayOfWeek]} ${_formatHourShort(s.startTime)} - ${_formatHourShort(s.endTime)}')
+        .join(", ");
   }
 
+  String _formatHourShort(String time24h) {
+    final formatted = formatTo12h(time24h); // "2:30 PM" o "2:00 PM"
+    // Si los minutos son ":00", los omitimos: "2 PM"
+    return formatted.replaceAll(':00', '');
+  }
+  
   Future<void> _confirmDelete(Course course) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -123,7 +133,7 @@ class _CourseScreenState extends State<CourseScreen> {
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (_, index) => _CourseTile(
               course: courses[index],
-              formatDays: _formatDays,
+              formatSessions: _formatSessions,
               onEdit: () => _openEdit(courses[index]),
               onDelete: () => _confirmDelete(courses[index]),
             ),
@@ -176,13 +186,13 @@ class _EmptyState extends StatelessWidget {
 
 class _CourseTile extends StatelessWidget {
   final Course course;
-  final String Function(List<int>) formatDays;
+  final String Function(List<CourseSession>) formatSessions;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _CourseTile({
     required this.course,
-    required this.formatDays,
+    required this.formatSessions,
     required this.onEdit,
     required this.onDelete,
   });
@@ -211,7 +221,7 @@ class _CourseTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  formatDays(course.scheduleDays),
+                  formatSessions(course.sessions),
                   style: const TextStyle(color: AppColors.hint, fontSize: 12),
                 ),
               ],

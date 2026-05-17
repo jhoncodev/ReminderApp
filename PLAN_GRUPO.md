@@ -1,7 +1,7 @@
 # Plan de Trabajo Grupal - Reminder App
 
 > Documento de planificación compartida entre los 3 integrantes del proyecto.
-> Última actualización: 2026-05-16
+> Última actualización: 2026-05-17
 
 ---
 
@@ -80,6 +80,7 @@ class Course {
   final String? academicPeriodId;
   final String name;
   final List<CourseSession> sessions;   // REEMPLAZA scheduleDays
+  final String? note;                   // Apunte general del curso
   final String? teacherId;              // Sprint 2 (FK a Teacher)
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -91,9 +92,9 @@ class Course {
 ```dart
 class CourseSession {
   final int dayOfWeek;        // 0=Lun ... 6=Dom
-  final String startTime;     // "HH:mm" ej. "08:00"
-  final String endTime;       // "HH:mm" ej. "10:00"
-  final String? classroomId;  // Sprint 2 (FK a Classroom)
+  final String startTime;     // "HH:mm" formato 24h ej. "08:00"
+  final String endTime;       // "HH:mm" formato 24h ej. "10:00"
+  final String? roomName;     // Aula libre (Sprint 2 migra a classroomId FK)
 }
 ```
 
@@ -242,16 +243,23 @@ Cada integrante elige según prioridad e interés. Marcar con [x] al completar y
 - [x] Quitar `print('DEBUG ...')` de `home_screen.dart` y `schedule_repository.dart`.
 
 ### Bloque C - Horarios por día en cursos
-- [ ] Crear modelo `CourseSession` en `lib/models/course_session.dart`.
-- [ ] Refactorizar `Course` para reemplazar `scheduleDays` por `List<CourseSession>`.
-- [ ] Actualizar `Course.fromFirestore` / `toFirestore` (sesiones como array de mapas en Firestore).
-- [ ] Refactorizar `CreateCourseScreen`: por cada día seleccionado mostrar 2 time pickers (inicio + fin).
-- [ ] Actualizar `course_screen.dart` para mostrar sesiones formateadas (ej. "Lun 8-10, Mié 14-16").
-- [ ] Adaptar `schedule_repository.dart` al nuevo modelo de sesiones.
+- [x] Crear modelo `CourseSession` en `lib/models/course_session.dart`.
+- [x] Refactorizar `Course` para reemplazar `scheduleDays` por `List<CourseSession>`.
+- [x] Actualizar `Course.fromFirestore` / `toFirestore` (sesiones como array de mapas en Firestore).
+- [x] Refactorizar `CreateCourseScreen` con UI estilo "School Planner": lista de sesiones + bottomsheet `SessionEditorSheet` reutilizable + campos Aula (por sesión) y Apunte (por curso).
+- [x] Actualizar `course_screen.dart` para mostrar sesiones formateadas (ej. "Lun 8-10 AM, Mié 2-4 PM").
+- [x] Adaptar `schedule_repository.dart` al nuevo modelo de sesiones.
+
+**Decisiones tomadas durante el Bloque C:**
+- Formato de hora: `"HH:mm"` (24h) en Firestore, `"h:mm AM/PM"` (12h) en UI. Helpers en `lib/core/utils/time_helpers.dart`.
+- `Course.note`: apunte general del curso (`String?`).
+- `CourseSession.roomName`: aula por sesión (`String?`). Sprint 2 se migra a `classroomId` FK.
+- Un curso puede tener múltiples sesiones en el mismo día (ej. teoría + práctica).
+- Sin pantalla separada "Add multiple": la lista de sesiones vive en la pantalla principal del curso.
 
 ### Bloque D - Pantalla Schedule semanal
 - [ ] Crear `lib/features/schedule/schedule_screen.dart`.
-- [ ] Implementar grid de horario semanal (columnas = días Lun-Dom, filas = horas 12am-12am).
+- [ ] Implementar grid de horario semanal (columnas = días Lun-Dom, filas = horas 12:00am-11:59pm).
 - [ ] Renderizar cursos como cards posicionadas (`Stack` + `Positioned`).
 - [ ] Conectar botón "HORARIO" del bottom nav de `home_screen.dart` a la nueva pantalla.
 
@@ -360,25 +368,29 @@ Estos temas se decidirán cuando lleguemos a su sprint:
 
 ---
 
-## 9. Estado actual de la app (al 2026-05-16)
+## 9. Estado actual de la app
 
-### Lo que funciona
-- Registro y login con Firebase Auth (email/contraseña).
+### Lo que funciona (al cierre de Bloques A + B + C)
+- Registro con selector de avatar (10 íconos) + login con Firebase Auth.
+- Cerrar sesión vía menú al tocar avatar en home.
+- Avatar mostrado en HomeScreen header.
 - CRUD de Periodos.
-- CRUD de Cursos (con días pero sin horarios por día todavía).
-- CRUD de Recordatorios (hoy llamados "Actividades").
-- Home con sección "Hoy" y "Próximos" alimentada por `ScheduleRepository`.
+- CRUD de Cursos con **sesiones múltiples** (día + hora inicio/fin + aula por sesión + apunte por curso).
+- CRUD de Recordatorios (hoy llamados "Actividades" — pendiente rename en Bloque F).
+- Home con sección "Hoy" y "Próximos" alimentada por `ScheduleRepository` (lee del array `sessions[]`).
 - UI dark mode con identidad visual sólida (lo mejor evaluado).
+- Helpers de formato de hora 24h↔12h en `lib/core/utils/time_helpers.dart`.
+- Bottomsheet reutilizable `SessionEditorSheet` para crear/editar sesión.
 
 ### Lo que está roto / pendiente
-- Bug: tras registro no redirige ni limpia campos.
-- Bug: tras login se hace `push` en vez de `pushReplacement` (back regresa al login).
-- Bug: `User.fromFirestore` lee snake_case pero `toFirestore` escribe camelCase.
-- Riesgo: `User.toFirestore` incluye `password` (no se usa hoy, pero peligroso).
-- Sin cerrar sesión.
-- Cursos sin horarios por día.
-- Sin pantalla Schedule (botón nav no funciona).
-- Sin calificaciones.
-- Textos mezclados español/inglés.
-- `print('DEBUG ...')` en código de producción.
-- Stats del home hardcoded ("12", "4", "08").
+- Sin pantalla Schedule semanal (botón "SCHEDULE" del nav no funciona) — **Bloque D**.
+- Sin calificaciones (Grade) ni promedio ponderado — **Bloque E**.
+- `Activity` aún no renombrado a `Reminder` (modelo + colección + UI) — **Bloque F**.
+- Textos mezclados español/inglés en home, login, register, schedule_repository — **Bloque G**.
+- Labels UPPERCASE pendientes de convertir a Title Case en 4 archivos — **Bloque G**.
+- Stats del home hardcoded ("12", "4", "08") — fuera de scope Sprint 1, queda para polish del home.
+- Falta `AuthGate` que decida Login vs Home según estado de auth al iniciar app — Sprint 2.
+
+### Deuda técnica conocida
+- Colores hardcoded en `home_screen.dart` (varios `Color(0xFF...)`) deberían migrar a `AppColors`.
+- `_activitySubtitle` en `schedule_repository.dart` lee `budget_amount` (snake_case) mientras `Activity.toFirestore` escribe `budgetAmount` (camelCase). Bug latente — se corrige cuando se haga Bloque F.

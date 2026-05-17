@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:reminder_app/models/course_session.dart';
 
 class Course {
   final String? id;
   final String userId;
   final String? academicPeriodId;
   final String name;
-  final List<int> scheduleDays;
+  final List<CourseSession> sessions;
+  final String? note;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -14,7 +16,8 @@ class Course {
     required this.userId,
     this.academicPeriodId,
     required this.name,
-    required this.scheduleDays,
+    required this.sessions,
+    this.note,
     required this.createdAt,
     required this.updatedAt
   });
@@ -31,7 +34,10 @@ class Course {
       userId: data['userId'] as String,
       academicPeriodId: data['academicPeriodId'] as String?,
       name: data['name'] as String,
-      scheduleDays: List<int>.from(data['scheduleDays'] ?? []),
+      sessions: (data['sessions'] as List<dynamic>? ?? [])
+        .map((e) => CourseSession.fromMap(e as Map<String, dynamic>))
+        .toList(),
+      note: data['note'] as String?,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate()
 
@@ -45,7 +51,8 @@ class Course {
       'userId': userId,
       if (academicPeriodId != null) 'academicPeriodId': academicPeriodId,
       'name': name,
-      'scheduleDays': scheduleDays,
+      'sessions': sessions.map((s) => s.toMap()).toList(),
+      if (note != null) 'note': note,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt)
     };

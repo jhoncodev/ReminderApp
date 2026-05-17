@@ -31,6 +31,8 @@ class ScheduleRepository {
     final now = DateTime.now();
     final startOfTomorrow = DateTime(now.year, now.month, now.day + 1);
     final List<ScheduleItem> items = [];
+
+    // Activities tipo "Una vez" con fecha futura
     final activitiesSnap = await _db
         .collection('activities')
         .where('userId', isEqualTo: userId)
@@ -55,29 +57,9 @@ class ScheduleRepository {
       }
     }
 
-    // Courses with a future end date (or start date if you prefer)
-    final coursesSnap = await _db
-        .collection('courses')
-        .where('userId', isEqualTo: userId)
-        .get();
-
-    for (final doc in coursesSnap.docs) {
-      final data = doc.data();
-      final date = (data['date'] as Timestamp?)?.toDate();
-      if (date != null && date.isAfter(startOfTomorrow)) {
-        items.add(
-          ScheduleItem(
-            id: doc.id,
-            title: data['name'] ?? '',
-            subtitle: 'Course',
-            time: data['startTime'] ?? '00:00',
-            accentColor: const Color(0xFFB483FF),
-            icon: Icons.school_outlined,
-            type: ScheduleItemType.course,
-          ),
-        );
-      }
-    }
+    // Cursos con sesiones en los días restantes de la semana
+    final courseItems = await _getCoursesForDays(userId, _remainingDow);
+    items.addAll(courseItems);
 
     items.sort((a, b) => a.time.compareTo(b.time));
     return items;
@@ -91,7 +73,7 @@ class ScheduleRepository {
   ) async {
     final activitiesSnap = await _db
         .collection('activities')
-        .where('userId', isEqualTo: userId) // camelCase
+        .where('userId', isEqualTo: userId)
         .get();
 
 
@@ -148,24 +130,35 @@ class ScheduleRepository {
   ) async {
     final coursesSnap = await _db
         .collection('courses')
-        .where('userId', isEqualTo: userId) // camelCase
+        .where('userId', isEqualTo: userId)
         .get();
 
     final List<ScheduleItem> items = [];
 
     for (final doc in coursesSnap.docs) {
       final data = doc.data();
-      final scheduleDays = List<int>.from(data['scheduleDays'] ?? []);
+      final name = data['name'] as String? ?? '';
 
-      final matches = scheduleDays.any((d) => days.contains(d));
+      // Leer el array de sesiones embebido
+      final sessionsRaw = (data['sessions'] as List<dynamic>?) ?? [];
 
-      if (matches) {
+      // Por cada sesión, si su día coincide con los buscados, agregamos un item
+      for (final raw in sessionsRaw) {
+        final session = raw as Map<String, dynamic>;
+        final dayOfWeek = session['dayOfWeek'] as int;
+
+        if (!days.contains(dayOfWeek)) continue;
+
+        final startTime = session['startTime'] as String? ?? '00:00';
+        final roomName = session['roomName'] as String?;
+
         items.add(
           ScheduleItem(
-            id: doc.id,
-            title: data['name'] ?? '',
-            subtitle: 'Course',
-            time: data['startTime'] ?? '00:00',
+            // ID único por curso+día para no colisionar cuando hay varias sesiones
+            id: '${doc.id}_$dayOfWeek',
+            title: name,
+            subtitle: roomName != null ? 'Course • $roomName' : 'Course',
+            time: startTime,
             accentColor: const Color(0xFFB483FF),
             icon: Icons.school_outlined,
             type: ScheduleItemType.course,

@@ -36,9 +36,9 @@ class _LoginScreenState extends State<LoginScreen> {
         password: passwordController.text.trim(),
       );
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Login successful!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Inicio de sesión exitoso')),
+        );
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -46,13 +46,14 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on FirebaseAuthException catch (e) {
       // Handle specific Firebase login errors
-      String errorMessage = e.message ?? 'An error occurred during login.';
+      String errorMessage =
+          e.message ?? 'Ocurrió un error durante el inicio de sesión';
       if (e.code == 'user-not-found') {
-        errorMessage = 'No user found for that email.';
+        errorMessage = 'No se encontró usuario con ese correo';
       } else if (e.code == 'wrong-password') {
-        errorMessage = 'Wrong password provided.';
+        errorMessage = 'Contraseña incorrecta';
       } else if (e.code == 'invalid-email') {
-        errorMessage = 'The email address is badly formatted.';
+        errorMessage = 'El correo electrónico está mal formateado';
       }
 
       if (mounted) {
@@ -126,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 48),
 
               // 3. Email Input
-              const AppLabel(text: "CORREO ELECTRÓNICO"),
+              const AppLabel(text: "Correo Electrónico"),
               const SizedBox(height: 8),
               AppTextField(
                 controller: emailController,
@@ -135,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
 
               // 4. Password Input
-              const AppLabel(text: "CONTRASEÑA"),
+              const AppLabel(text: "Contraseña"),
               const SizedBox(height: 8),
               AppPasswordField(controller: passwordController),
               const SizedBox(height: 12),

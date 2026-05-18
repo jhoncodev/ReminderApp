@@ -59,38 +59,38 @@ class _HomeScreen extends State<HomeScreen> {
 
   Future<void> _showAvatarMenu(Offset position) async {
     final selected = await showMenu(
-      context: context, 
+      context: context,
       color: AppColors.card,
       position: RelativeRect.fromLTRB(
-        position.dx, position.dy, position.dx, position.dy
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
       ),
-      items: const[
+      items: const [
         PopupMenuItem<String>(
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout,color: Colors.redAccent),
+              Icon(Icons.logout, color: Colors.redAccent),
               SizedBox(width: 12),
-              Text(
-                'Cerrar Sesión',
-                style: TextStyle(color: Colors.white),
-              ),
+              Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
             ],
           ),
         ),
       ],
     );
-    if(selected == 'logout'){
+    if (selected == 'logout') {
       await _logout();
     }
   }
 
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
-    if(!mounted) return;
+    if (!mounted) return;
     Navigator.pushReplacement(
-      context, 
-      MaterialPageRoute(builder: (_) => const LoginScreen())
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
@@ -110,7 +110,7 @@ class _HomeScreen extends State<HomeScreen> {
               const SizedBox(height: 40),
 
               const Text(
-                "Today's Schedule",
+                "Horario de Hoy",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -124,7 +124,7 @@ class _HomeScreen extends State<HomeScreen> {
                 const Center(child: CircularProgressIndicator())
               else if (_todayList.isEmpty)
                 const Text(
-                  'No schedule for today',
+                  'Sin horario para hoy',
                   style: TextStyle(color: Colors.white54),
                 )
               else
@@ -146,7 +146,7 @@ class _HomeScreen extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   const Text(
-                    "Upcoming",
+                    "Próximos",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -155,7 +155,7 @@ class _HomeScreen extends State<HomeScreen> {
                     ),
                   ),
                   Text(
-                    "SEE ALL",
+                    "VER TODO",
                     style: TextStyle(
                       color: const Color(0xFFEEDDFF),
                       fontSize: 12,
@@ -175,7 +175,7 @@ class _HomeScreen extends State<HomeScreen> {
                     : _upcomingList.isEmpty
                     ? const Center(
                         child: Text(
-                          'Nothing upcoming',
+                          'Nada próximo',
                           style: TextStyle(color: Colors.white54),
                         ),
                       )
@@ -263,9 +263,9 @@ class _HomeScreen extends State<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildStatCard('12', 'REMINDERS', const Color(0xFFFFB054)),
-        _buildStatCard('4', 'COURSES', const Color(0xFFB483FF)),
-        _buildStatCard('08', 'ACTIVITIES', const Color(0xFF4EE6D3)),
+        _buildStatCard('12', 'RECORDATORIOS', const Color(0xFFFFB054)),
+        _buildStatCard('4', 'CURSOS', const Color(0xFFB483FF)),
+        _buildStatCard('08', 'APUNTES', const Color(0xFF4EE6D3)),
       ],
     );
   }
@@ -428,10 +428,10 @@ class _HomeScreen extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavItem(Icons.home, 'HOME', isActive: true),
-          _buildNavItem(Icons.calendar_today, 'SCHEDULE'),
-          _buildNavItem(Icons.share, 'SHARE'),
-          _buildNavItem(Icons.person, 'PROFILE'),
+          _buildNavItem(Icons.home, 'INICIO', isActive: true),
+          _buildNavItem(Icons.calendar_today, 'HORARIO'),
+          _buildNavItem(Icons.share, 'COMPARTIR'),
+          _buildNavItem(Icons.person, 'PERFIL'),
         ],
       ),
     );

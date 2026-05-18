@@ -42,9 +42,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     'Jueves',
     'Viernes',
     'Sábado',
-    'Domingo'
+    'Domingo',
   ];
-
 
   @override
   void initState() {
@@ -114,7 +113,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     }
 
     final periodId = isAcademicPeriodEnabled ? selectedPeriod?.id : null;
-    final note = noteController.text.trim().isEmpty ? null : noteController.text.trim();
+    final note = noteController.text.trim().isEmpty
+        ? null
+        : noteController.text.trim();
 
     setState(() => _isSaving = true);
 
@@ -133,7 +134,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           createdAt: original.createdAt,
           updatedAt: now,
         );
-        
+
         await _courseRepo.update(updated);
       } else {
         final newCourse = Course(
@@ -145,20 +146,20 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           createdAt: now,
           updatedAt: now,
         );
-        
+
         await _courseRepo.create(newCourse);
       }
 
       if (!mounted) return;
       _showSnack(
-        widget.isEditing ? "Curso actualizado correctamente" : "Curso creado correctamente",
+        widget.isEditing
+            ? "Curso actualizado correctamente"
+            : "Curso creado correctamente",
       );
       Navigator.pop(context);
-    
     } catch (e) {
       if (!mounted) return;
       _showSnack("Error al guardar: $e");
-    
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -265,7 +266,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const AppLabel(text: "NOMBRE DEL CURSO"),
+              const AppLabel(text: "Nombre del Curso"),
               const SizedBox(height: 8),
               AppTextField(
                 controller: nameController,
@@ -304,7 +305,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AppLabel(text: "PERIODO ACADÉMICO"),
+                AppLabel(text: "Período Académico"),
                 SizedBox(height: 4),
                 Text(
                   "Selecciona el ciclo al que pertenece este curso",
@@ -374,7 +375,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppLabel(text: "SESIONES"),
+        const AppLabel(text: "Sesiones"),
         const SizedBox(height: 4),
         const Text(
           "Días y horarios del curso",
@@ -442,10 +443,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '${formatTo12h(session.startTime)} → ${formatTo12h(session.endTime)}',
-                  style: const TextStyle(
-                    color: AppColors.hint,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: AppColors.hint, fontSize: 12),
                 ),
               ],
             ),
@@ -503,7 +501,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppLabel(text: "APUNTE (opcional)"),
+        const AppLabel(text: "Apunte (Opcional)"),
         const SizedBox(height: 4),
         const Text(
           "Notas o información extra del curso",

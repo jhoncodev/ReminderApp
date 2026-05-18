@@ -168,7 +168,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Acitivity name
-              const AppLabel(text: "NOMBRE DE LA ACTIVIDAD"),
+              const AppLabel(text: "Nombre de la Actividad"),
               const SizedBox(height: 8),
               AppTextField(
                 controller: nameController,
@@ -178,7 +178,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               const SizedBox(height: 20),
 
               // Notes
-              const AppLabel(text: "NOTAS / DETALLES"),
+              const AppLabel(text: "Notas / Detalles"),
               const SizedBox(height: 8),
               AppTextField(
                 controller: notesController,
@@ -189,7 +189,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               const SizedBox(height: 20),
 
               // Amount
-              const AppLabel(text: "PRESUPUESTO"),
+              const AppLabel(text: "Presupuesto"),
               const SizedBox(height: 8),
               AppTextField(
                 controller: amountController,
@@ -200,14 +200,14 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               const SizedBox(height: 24),
 
               // Frequency
-              const AppLabel(text: "FRECUENCIA"),
+              const AppLabel(text: "Frecuencia"),
               const SizedBox(height: 8),
               _frequencySelector(),
 
               const SizedBox(height: 20),
 
               // Days
-              const AppLabel(text: "DÍAS SELECCIONADOS"),
+              const AppLabel(text: "Días Seleccionados"),
               const SizedBox(height: 8),
               DaysSelector(
                 selectedDays: selectedDays,
@@ -217,7 +217,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
                   });
                 },
               ),
-              const AppLabel(text: "HORA DE INICIO"),
+              const AppLabel(text: "Hora de Inicio"),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: () async {
@@ -242,7 +242,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
               const SizedBox(height: 32),
               if (frequency == "Una vez") ...[
                 const SizedBox(height: 20),
-                const AppLabel(text: "FECHA"),
+                const AppLabel(text: "Fecha"),
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () async {

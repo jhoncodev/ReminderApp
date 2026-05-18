@@ -28,10 +28,10 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
   bool _isSaving = false;
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
     final existing = widget.period;
-    if(existing != null){
+    if (existing != null) {
       nameController.text = existing.name;
       startDateController.text = _formatDate(existing.startDate);
       endDateController.text = _formatDate(existing.endDate);
@@ -46,40 +46,40 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
     super.dispose();
   }
 
-  DateTime? _parseDate(String input){
+  DateTime? _parseDate(String input) {
     final parts = input.split('/');
-    if(parts.length != 3) return null;
+    if (parts.length != 3) return null;
     final month = int.tryParse(parts[0]);
     final day = int.tryParse(parts[1]);
     final year = int.tryParse(parts[2]);
-    if(month == null || day == null || year == null) return null;
+    if (month == null || day == null || year == null) return null;
     return DateTime(year, month, day);
   }
 
-  String _formatDate(DateTime date){
+  String _formatDate(DateTime date) {
     final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2,'0');
+    final d = date.day.toString().padLeft(2, '0');
     return "$m/$d/${date.year}";
   }
 
-  void _showSnack(String message){
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _savePeriod() async {
-    if(_isSaving) return;
+    if (_isSaving) return;
 
     final name = nameController.text.trim();
     final startText = startDateController.text;
     final endText = endDateController.text;
 
-    if(name.isEmpty){
+    if (name.isEmpty) {
       _showSnack("El nombre es obligatorio");
       return;
     }
-    if(startText.isEmpty || endText.isEmpty){
+    if (startText.isEmpty || endText.isEmpty) {
       _showSnack("Selecciona las fechas de inicio y fin");
       return;
     }
@@ -87,26 +87,26 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
     final startDate = _parseDate(startText);
     final endDate = _parseDate(endText);
 
-    if(startDate == null || endDate == null){
+    if (startDate == null || endDate == null) {
       _showSnack("Formato de fecha invalido");
       return;
     }
-    if(endDate.isBefore(startDate)){
+    if (endDate.isBefore(startDate)) {
       _showSnack("La fecha de fin debe ser posterior a la de inicio");
       return;
     }
 
     final user = FirebaseAuth.instance.currentUser;
-    if(user == null){
+    if (user == null) {
       _showSnack("No hay usuario autenticado");
       return;
     }
 
     setState(() => _isSaving = true);
 
-    try{
+    try {
       final now = DateTime.now();
-      if(widget.isEditing){
+      if (widget.isEditing) {
         // Editando un periodo
         final original = widget.period!;
         final updated = Period(
@@ -118,34 +118,34 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
           createdAt: original.createdAt,
           updatedAt: now,
         );
-        
+
         await _repo.update(updated);
-      }else{
+      } else {
         // Creando un periodo
         final newPeriod = Period(
-          userId: user.uid, 
-          name: name, 
-          startDate: startDate, 
-          endDate: endDate, 
-          createdAt: now, 
-          updatedAt: now
+          userId: user.uid,
+          name: name,
+          startDate: startDate,
+          endDate: endDate,
+          createdAt: now,
+          updatedAt: now,
         );
 
         await _repo.create(newPeriod);
       }
 
-      if(!mounted) return;
+      if (!mounted) return;
       _showSnack(
-        widget.isEditing ? "Periodo actualizado correctamente" : "Periodo creado correctamente"
+        widget.isEditing
+            ? "Periodo actualizado correctamente"
+            : "Periodo creado correctamente",
       );
       Navigator.pop(context);
-
-    }catch (e){
-      if(!mounted) return;
+    } catch (e) {
+      if (!mounted) return;
       _showSnack("Error al guardar: $e");
-    
     } finally {
-      if(mounted) setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -153,51 +153,48 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
   Widget build(BuildContext context) {
     final title = widget.isEditing ? "Editar Periodo" : "Crear Periodo";
     final buttonText = widget.isEditing ? "Guardar Cambios" : "Crear Periodo";
-    
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: DarkAppBar(title: title),
       body: SafeArea(
         child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Period name
-                  const AppLabel(text:"NOMBRE DEL PERIODO"),
-                  
-                  const SizedBox(height: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Period name
+              const AppLabel(text: "Nombre del Período"),
 
-                  AppTextField(
-                    controller: nameController, 
-                    hint: "Ej. Ciclo 2024"
-                  ),
+              const SizedBox(height: 8),
 
-                  const SizedBox(height: 24),
+              AppTextField(controller: nameController, hint: "Ej. Ciclo 2024"),
 
-                  // Start date
-                  const AppLabel(text:"INICIO"),
-                  const SizedBox(height: 8),
-                  AppDatePickerField(controller: startDateController),
+              const SizedBox(height: 24),
 
-                  const SizedBox(height: 20),
+              // Start date
+              const AppLabel(text: "Inicio"),
+              const SizedBox(height: 8),
+              AppDatePickerField(controller: startDateController),
 
-                  // End date
-                  const AppLabel(text:"FIN"),
-                  const SizedBox(height: 8),
-                  AppDatePickerField(controller: endDateController),
+              const SizedBox(height: 20),
 
-                  // Button
-                  const SizedBox(height: 50),
-                  PrimaryGradientButton(
-                    text: _isSaving ? "Guardando..." : buttonText, 
-                    onPressed: _isSaving ? null : _savePeriod,
-                    glow: true,
-                  )
-                ],
+              // End date
+              const AppLabel(text: "Fin"),
+              const SizedBox(height: 8),
+              AppDatePickerField(controller: endDateController),
+
+              // Button
+              const SizedBox(height: 50),
+              PrimaryGradientButton(
+                text: _isSaving ? "Guardando..." : buttonText,
+                onPressed: _isSaving ? null : _savePeriod,
+                glow: true,
               ),
-            ),
+            ],
+          ),
         ),
-      );
+      ),
+    );
   }
 }

@@ -20,12 +20,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
   String _selectedAvatar = 'anonimo';
   bool _isLoading = false;
-  
+
   @override
-  void dispose(){
+  void dispose() {
     fullNameController.dispose();
     emailController.dispose();
     passwordController.dispose();
@@ -35,13 +36,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _openAvatarPicker() async {
     await showModalBottomSheet(
-      context: context, 
+      context: context,
       backgroundColor: AppColors.background,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28))
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (sheetContext){
+      builder: (sheetContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -61,18 +62,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 20),
 
                   AvatarSelector(
-                    selectedAvatar: _selectedAvatar, 
-                    onAvatarSelected: (avatar){
+                    selectedAvatar: _selectedAvatar,
+                    onAvatarSelected: (avatar) {
                       setState(() => _selectedAvatar = avatar);
                       Navigator.pop(sheetContext);
-                    }
-                  )
+                    },
+                  ),
                 ],
               ),
             ),
-          )
+          ),
         );
-      }
+      },
     );
   }
 
@@ -83,7 +84,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       // 1. Create the user in Firebase Authentication
-      if (passwordController.text.trim() != confirmPasswordController.text.trim()) {
+      if (passwordController.text.trim() !=
+          confirmPasswordController.text.trim()) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Las contraseñas no coinciden')),
@@ -94,24 +96,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
 
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(userCredential.user!.uid) 
+          .doc(userCredential.user!.uid)
           .set({
-        'name': fullNameController.text.trim(),
-        'email': emailController.text.trim(),
-        'avatarIcon': _selectedAvatar,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+            'name': fullNameController.text.trim(),
+            'email': emailController.text.trim(),
+            'avatarIcon': _selectedAvatar,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User created successfully!')),
+          const SnackBar(content: Text('Cuenta creada con éxito')),
         );
 
         // Clean inputs
@@ -126,16 +128,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-    
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children:[
+            children: [
               Center(
                 child: GestureDetector(
                   onTap: _openAvatarPicker,
@@ -159,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             radius: 56,
                             backgroundColor: AppColors.card,
                             backgroundImage: AssetImage(
-                              'assets/avatars/$_selectedAvatar.png'
+                              'assets/avatars/$_selectedAvatar.png',
                             ),
                           ),
                           Container(
@@ -167,7 +168,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             decoration: BoxDecoration(
                               color: AppColors.purplePrimary,
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.background, width: 2),
+                              border: Border.all(
+                                color: AppColors.background,
+                                width: 2,
+                              ),
                             ),
                             child: const Icon(
                               Icons.edit,
@@ -180,49 +184,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       const Text(
                         'Toca para cambiar',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     ],
                   ),
-                )
+                ),
               ),
               const SizedBox(height: 32),
               // Full name
-              const AppLabel(text:'Nombre Completo'),
+              const AppLabel(text: 'Nombre Completo'),
               const SizedBox(height: 8),
               AppTextField(
-                controller: fullNameController, 
-                hint: "Messi Ronaldo"
+                controller: fullNameController,
+                hint: "Messi Ronaldo",
               ),
               const SizedBox(height: 20),
 
               // Email
-              const AppLabel(text:"Correo Electrónico"),
+              const AppLabel(text: "Correo Electrónico"),
               const SizedBox(height: 8),
               AppTextField(
-                controller: emailController, 
-                hint: "messiro@gmail.com"
+                controller: emailController,
+                hint: "messiro@gmail.com",
               ),
               const SizedBox(height: 20),
 
               // Password
-              const AppLabel(text:"Contraseña"),
+              const AppLabel(text: "Contraseña"),
               const SizedBox(height: 8),
               AppPasswordField(controller: passwordController),
               const SizedBox(height: 20),
 
               // Confirm Password
-              const AppLabel(text:"Confirmar Contraseña"),
+              const AppLabel(text: "Confirmar Contraseña"),
               const SizedBox(height: 8),
               AppPasswordField(controller: confirmPasswordController),
               const SizedBox(height: 32),
 
               // Register Button
               PrimaryGradientButton(
-                text: "Registrarse", 
+                text: "Registrarse",
                 onPressed: _isLoading ? null : _registerUser,
                 glow: true,
               ),
@@ -237,7 +238,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: TextStyle(color: Colors.white70),
                   ),
                   GestureDetector(
-                    onTap: () { 
+                    onTap: () {
                       Navigator.pop(context);
                     },
                     child: const Text(
@@ -257,4 +258,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-

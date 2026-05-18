@@ -3,6 +3,7 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/data/course_repository.dart';
+import 'package:reminder_app/features/grade/grade_screen.dart';
 import 'package:reminder_app/features/home/create_course_screen.dart';
 import 'package:reminder_app/models/course.dart';
 import 'package:reminder_app/models/course_session.dart';
@@ -22,7 +23,10 @@ class _CourseScreenState extends State<CourseScreen> {
   String _formatSessions(List<CourseSession> sessions) {
     if (sessions.isEmpty) return "Sin sesiones";
     return sessions
-        .map((s) => '${_dayLabels[s.dayOfWeek]} ${_formatHourShort(s.startTime)} - ${_formatHourShort(s.endTime)}')
+        .map(
+          (s) =>
+              '${_dayLabels[s.dayOfWeek]} ${_formatHourShort(s.startTime)} - ${_formatHourShort(s.endTime)}',
+        )
         .join(", ");
   }
 
@@ -31,7 +35,7 @@ class _CourseScreenState extends State<CourseScreen> {
     // Si los minutos son ":00", los omitimos: "2 PM"
     return formatted.replaceAll(':00', '');
   }
-  
+
   Future<void> _confirmDelete(Course course) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -95,6 +99,16 @@ class _CourseScreenState extends State<CourseScreen> {
     );
   }
 
+  void _openGrades(Course course) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            GradeScreen(courseId: course.id!, courseName: course.name),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,6 +148,7 @@ class _CourseScreenState extends State<CourseScreen> {
             itemBuilder: (_, index) => _CourseTile(
               course: courses[index],
               formatSessions: _formatSessions,
+              onViewGrades: () => _openGrades(courses[index]),
               onEdit: () => _openEdit(courses[index]),
               onDelete: () => _confirmDelete(courses[index]),
             ),
@@ -187,12 +202,14 @@ class _EmptyState extends StatelessWidget {
 class _CourseTile extends StatelessWidget {
   final Course course;
   final String Function(List<CourseSession>) formatSessions;
+  final VoidCallback onViewGrades;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _CourseTile({
     required this.course,
     required this.formatSessions,
+    required this.onViewGrades,
     required this.onEdit,
     required this.onDelete,
   });
@@ -226,6 +243,14 @@ class _CourseTile extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            onPressed: onViewGrades,
+            icon: const Icon(
+              Icons.grade_outlined,
+              color: AppColors.purplePrimary,
+            ),
+            tooltip: "Calificaciones",
           ),
           IconButton(
             onPressed: onEdit,

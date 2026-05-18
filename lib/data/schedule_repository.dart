@@ -76,7 +76,6 @@ class ScheduleRepository {
         .where('userId', isEqualTo: userId)
         .get();
 
-
     final List<ScheduleItem> items = [];
 
     for (final doc in activitiesSnap.docs) {
@@ -157,7 +156,7 @@ class ScheduleRepository {
             // ID único por curso+día para no colisionar cuando hay varias sesiones
             id: '${doc.id}_$dayOfWeek',
             title: name,
-            subtitle: roomName != null ? 'Course • $roomName' : 'Course',
+            subtitle: roomName != null ? 'Curso • $roomName' : 'Curso',
             time: startTime,
             accentColor: const Color(0xFFB483FF),
             icon: Icons.school_outlined,
@@ -173,6 +172,6 @@ class ScheduleRepository {
   String _activitySubtitle(Map<String, dynamic> data) {
     final freq = data['frequency'] ?? '';
     final budget = data['budget_amount'];
-    return budget != null ? 'Finance • $freq' : 'Activity • $freq';
+    return budget != null ? 'Finanza • $freq' : 'Recordatorio • $freq';
   }
 }

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
 import 'package:reminder_app/core/widgets/create_options_sheet.dart';
 import 'package:reminder_app/data/schedule_repository.dart';
 import 'package:reminder_app/data/user_repository.dart';
@@ -206,7 +207,7 @@ class _HomeScreen extends State<HomeScreen> {
         child: const Icon(Icons.add),
       ),
       // Custom Bottom Navigation
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const BottomNavBar(currentRoute: '/home'),
     );
   }
 
@@ -438,7 +439,9 @@ class _HomeScreen extends State<HomeScreen> {
   }
 
   Widget _buildNavItem(IconData icon, String label, {bool isActive = false}) {
-    return Column(
+    return 
+    
+    Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
-import 'package:reminder_app/data/activity_repository.dart';
-import 'package:reminder_app/features/home/create_activity_screen.dart';
-import 'package:reminder_app/models/activity.dart';
+import 'package:reminder_app/data/reminder_repository.dart';
+import 'package:reminder_app/features/home/create_reminder_screen.dart';
+import 'package:reminder_app/models/reminder.dart';
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -13,7 +13,7 @@ class ActivityScreen extends StatefulWidget {
 }
 
 class _ActivityScreenState extends State<ActivityScreen> {
-  final _repo = ActivityRepository();
+  final _repo = ReminderRepository();
 
   static const _dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -22,7 +22,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return days.map((d) => _dayLabels[d]).join(", ");
   }
 
-  Future<void> _confirmDelete(Activity activity) async {
+  Future<void> _confirmDelete(Reminder reminder) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -32,7 +32,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          "¿Seguro que deseas eliminar \"${activity.name}\"? Esta acción no se puede deshacer.",
+          "¿Seguro que deseas eliminar \"${reminder.name}\"? Esta acción no se puede deshacer.",
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -55,14 +55,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
     );
 
     if (confirmed != true) return;
-    if (activity.id == null) return;
+    if (reminder.id == null) return;
 
     try {
-      await _repo.delete(activity.id!);
+      await _repo.delete(reminder.id!);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Actividad eliminada")));
+      ).showSnackBar(const SnackBar(content: Text("Recordatorio eliminado")));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -74,15 +74,15 @@ class _ActivityScreenState extends State<ActivityScreen> {
   void _openCreate() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CreateActivityScreen()),
+      MaterialPageRoute(builder: (_) => const CreateReminderScreen()),
     );
   }
 
-  void _openEdit(Activity activity) {
+  void _openEdit(Reminder reminder) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CreateActivityScreen(activity: activity),
+        builder: (_) => CreateReminderScreen(reminder: reminder),
       ),
     );
   }
@@ -92,7 +92,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const DarkAppBar(title: "Actividades"),
-      body: StreamBuilder<List<Activity>>(
+      body: StreamBuilder<List<Reminder>>(
         stream: _repo.watchAll(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -124,7 +124,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             itemCount: activities.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (_, index) => _ActivityTile(
-              activity: activities[index],
+              reminder: activities[index],
               formatDays: _formatDays,
               onEdit: () => _openEdit(activities[index]),
               onDelete: () => _confirmDelete(activities[index]),
@@ -177,13 +177,13 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _ActivityTile extends StatelessWidget {
-  final Activity activity;
+  final Reminder reminder;
   final String Function(List<int>) formatDays;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _ActivityTile({
-    required this.activity,
+    required this.reminder,
     required this.formatDays,
     required this.onEdit,
     required this.onDelete,
@@ -204,7 +204,7 @@ class _ActivityTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  activity.name,
+                  reminder.name,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -215,7 +215,7 @@ class _ActivityTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "${activity.frequency} • ${formatDays(activity.scheduleDays)}",
+                  "${reminder.frequency} • ${formatDays(reminder.scheduleDays)}",
                   style: const TextStyle(color: AppColors.hint, fontSize: 12),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

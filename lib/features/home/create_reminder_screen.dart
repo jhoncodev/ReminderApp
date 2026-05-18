@@ -6,21 +6,21 @@ import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/core/widgets/days_selector.dart';
-import 'package:reminder_app/data/activity_repository.dart';
-import 'package:reminder_app/models/activity.dart';
+import 'package:reminder_app/data/reminder_repository.dart';
+import 'package:reminder_app/models/reminder.dart';
 
-class CreateActivityScreen extends StatefulWidget {
-  final Activity? activity;
-  const CreateActivityScreen({super.key, this.activity});
+class CreateReminderScreen extends StatefulWidget {
+  final Reminder? reminder;
+  const CreateReminderScreen({super.key, this.reminder});
 
-  bool get isEditing => activity != null;
+  bool get isEditing => reminder != null;
 
   @override
-  State<CreateActivityScreen> createState() => _CreateActivityScreenState();
+  State<CreateReminderScreen> createState() => _CreateReminderScreenState();
 }
 
-class _CreateActivityScreenState extends State<CreateActivityScreen> {
-  final _activityRepo = ActivityRepository();
+class _CreateReminderScreenState extends State<CreateReminderScreen> {
+  final _activityRepo = ReminderRepository();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
@@ -35,7 +35,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
   @override
   void initState() {
     super.initState();
-    final existing = widget.activity;
+    final existing = widget.reminder;
     if (existing == null) return;
 
     nameController.text = existing.name;
@@ -99,8 +99,8 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
       }
 
       if (widget.isEditing) {
-        final original = widget.activity!;
-        final updated = Activity(
+        final original = widget.reminder!;
+        final updated = Reminder(
           id: original.id,
           userId: original.userId,
           name: name,
@@ -119,7 +119,7 @@ class _CreateActivityScreenState extends State<CreateActivityScreen> {
         );
         await _activityRepo.update(updated);
       } else {
-        final newActivity = Activity(
+        final newActivity = Reminder(
           userId: user.uid,
           name: name,
           notes: notesController.text.trim().isEmpty

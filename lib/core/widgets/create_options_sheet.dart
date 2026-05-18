@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
-import 'package:reminder_app/features/home/activity_screen.dart';
+import 'package:reminder_app/features/home/reminder_screen.dart';
 import 'package:reminder_app/features/home/course_screen.dart';
 import 'package:reminder_app/features/home/period_screen.dart';
 

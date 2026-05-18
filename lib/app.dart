@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/features/auth/login_screen.dart';
+import 'package:reminder_app/features/home/home_screen.dart';
+import 'package:reminder_app/features/profile/profile_screen.dart';
+import 'package:reminder_app/features/schedule/schedule_screen.dart';
+import 'package:reminder_app/features/share/share_screen.dart';
 
 
 class MyApp extends StatelessWidget{
@@ -15,7 +19,14 @@ class MyApp extends StatelessWidget{
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.purplePrimary),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      initialRoute: '/login',
+      routes: {
+      '/login': (context) => const LoginScreen(),
+      '/home': (context) => const HomeScreen(),
+      '/schedule': (context) => const ScheduleScreen(),
+      '/profile': (context) => const ProfileScreen(),
+      '/share': (context) => const ShareScreen(),
+    },
     );
   }
 }

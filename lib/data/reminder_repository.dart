@@ -1,17 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:reminder_app/models/activity.dart';
+import 'package:reminder_app/models/reminder.dart';
 
-class ActivityRepository {
+class ReminderRepository {
   
   // Creamos la referencia a la colección 'activities' en firestore
   // con withConverter, todas las consultas nos devolverán objetos
-  // de tipo Activity
-  final CollectionReference<Activity> _activitiesRef = FirebaseFirestore.instance
-  .collection('activities')
+  // de tipo Reminder
+  final CollectionReference<Reminder> _remindersRef = FirebaseFirestore.instance
+  .collection('reminders')
   .withConverter(
-    fromFirestore: Activity.fromFirestore,
-    toFirestore: (activity, _) => activity.toFirestore(),
+    fromFirestore: Reminder.fromFirestore,
+    toFirestore: (reminder, _) => reminder.toFirestore(),
   );
 
   // Se devuelve el uid del usuario con sesión iniciada y
@@ -26,8 +26,8 @@ class ActivityRepository {
 
   // Stream (Escucha en tiempo real a firestore) con todas las actividades del
   // usuario actual, mostrando de arriba abajo por fecha de creación
-  Stream<List<Activity>> watchAll(){
-    return _activitiesRef
+  Stream<List<Reminder>> watchAll(){
+    return _remindersRef
     .where('userId', isEqualTo: _currentUserId)
     .orderBy('createdAt', descending: true)
     .snapshots()
@@ -36,29 +36,28 @@ class ActivityRepository {
 
   // Método para crear una nueva actividad, firestore genera el id
   // que es el documento automaticamente
-  Future<void> create(Activity activity) async {
-    await _activitiesRef.add(activity);
-    
+  Future<void> create(Reminder reminder) async {
+    await _remindersRef.add(reminder);
   }
 
   // Método para actualizar una actividad por completo, se requiere que la
   // actividad tenga id
-  Future<void> update(Activity activity) async {
-    if(activity.id == null){
+  Future<void> update(Reminder reminder) async {
+    if(reminder.id == null){
       throw Exception('No se puede actualizar una actividad sin id');
     }
 
-    await _activitiesRef.doc(activity.id).set(activity);
+    await _remindersRef.doc(reminder.id).set(reminder);
   }
 
   // Método para eliminar una actividad por id
   Future<void> delete(String id) async {
-    await _activitiesRef.doc(id).delete();
+    await _remindersRef.doc(id).delete();
   }
 
   // Método para obtener una actividad por su id
-  Future<Activity?> getById(String id) async {
-    final snapshot = await _activitiesRef.doc(id).get();
+  Future<Reminder?> getById(String id) async {
+    final snapshot = await _remindersRef.doc(id).get();
     return snapshot.data();
   }
 }

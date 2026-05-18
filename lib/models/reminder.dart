@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Activity {
+class Reminder {
   final String? id;
   final String userId;
   final String name;
@@ -13,7 +13,7 @@ class Activity {
   final String? startTime; // "HH:mm"
   final DateTime? date;
 
-  Activity({
+  Reminder({
     this.id,
     required this.userId,
     required this.name,
@@ -27,14 +27,14 @@ class Activity {
     this.date,
   });
 
-  // Convertimos el documento de Activity que traemos de firestore
-  // a un objeto de tipo Activity para usar libremente en la App
-  factory Activity.fromFirestore(
+  // Convertimos el documento de Reminder que traemos de firestore
+  // a un objeto de tipo Reminder para usar libremente en la App
+  factory Reminder.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
     SnapshotOptions? options,
   ) {
     final data = snapshot.data()!;
-    return Activity(
+    return Reminder(
       id: snapshot.id,
       userId: data['userId'] as String,
       name: data['name'] as String,

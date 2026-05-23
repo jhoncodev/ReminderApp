@@ -45,12 +45,12 @@ class _SheetContent extends StatelessWidget {
             _OptionCard(
               icon: Icons.event_note,
               iconBackground: AppColors.cyan,
-              title: "Actividad",
-              subtitle: "Pagos, tareas recurrentes, eventos",
+              title: "Recordatorio",
+              subtitle: "Exámenes, prácticas, reuniones, mensualidades",
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ActivityScreen()),
+                  MaterialPageRoute(builder: (_) => const ReminderScreen()),
                 );
               },
             ),
@@ -72,7 +72,7 @@ class _SheetContent extends StatelessWidget {
 
             _OptionCard(
               icon: Icons.calendar_month,
-              iconBackground: AppColors.organe,
+              iconBackground: AppColors.orange,
               title: "Periodo",
               subtitle: "Ciclos académicos, semestres",
               onTap: () {

@@ -4,7 +4,7 @@ import 'package:reminder_app/models/reminder.dart';
 
 class ReminderRepository {
   
-  // Creamos la referencia a la colección 'activities' en firestore
+  // Creamos la referencia a la colección 'reminders' en firestore
   // con withConverter, todas las consultas nos devolverán objetos
   // de tipo Reminder
   final CollectionReference<Reminder> _remindersRef = FirebaseFirestore.instance
@@ -24,7 +24,7 @@ class ReminderRepository {
     return user.uid;
   }
 
-  // Stream (Escucha en tiempo real a firestore) con todas las actividades del
+  // Stream (Escucha en tiempo real a firestore) con todas los recordatorios del
   // usuario actual, mostrando de arriba abajo por fecha de creación
   Stream<List<Reminder>> watchAll(){
     return _remindersRef
@@ -34,28 +34,28 @@ class ReminderRepository {
     .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
   }
 
-  // Método para crear una nueva actividad, firestore genera el id
+  // Método para crear un nuevo recordatorio, firestore genera el id
   // que es el documento automaticamente
   Future<void> create(Reminder reminder) async {
     await _remindersRef.add(reminder);
   }
 
-  // Método para actualizar una actividad por completo, se requiere que la
-  // actividad tenga id
+  // Método para actualizar un recordatorio por completo, se requiere que la
+  // recordatorio tenga id
   Future<void> update(Reminder reminder) async {
     if(reminder.id == null){
-      throw Exception('No se puede actualizar una actividad sin id');
+      throw Exception('No se puede actualizar un recordatorio sin id');
     }
 
     await _remindersRef.doc(reminder.id).set(reminder);
   }
 
-  // Método para eliminar una actividad por id
+  // Método para eliminar un recordatorio por id
   Future<void> delete(String id) async {
     await _remindersRef.doc(id).delete();
   }
 
-  // Método para obtener una actividad por su id
+  // Método para obtener un recordatorio por su id
   Future<Reminder?> getById(String id) async {
     final snapshot = await _remindersRef.doc(id).get();
     return snapshot.data();

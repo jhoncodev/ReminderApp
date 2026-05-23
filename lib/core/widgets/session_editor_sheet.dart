@@ -31,6 +31,7 @@ class _SessionEditorSheetState extends State<SessionEditorSheet>{
   int? _dayOfWeek;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
+  String? _errorMessage;
   final _roomController = TextEditingController();
 
   static const _dayNames = [
@@ -102,7 +103,10 @@ class _SessionEditorSheetState extends State<SessionEditorSheet>{
     );
 
     if(selected != null){
-      setState(() => _dayOfWeek = selected);
+      setState(() {
+        _dayOfWeek = selected;
+        _errorMessage = null;
+      });
     }
   }
 
@@ -110,6 +114,18 @@ class _SessionEditorSheetState extends State<SessionEditorSheet>{
     final picked = await showTimePicker(
       context: context, 
       initialTime: (isStart ? _startTime : _endTime) ?? TimeOfDay.now(),
+      builder: (context, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.purplePrimary,
+            surface: AppColors.surface,
+          ),
+          dialogTheme: const DialogThemeData(
+            backgroundColor: AppColors.surface,
+          ),
+        ), 
+        child: child!,
+      ),
     );
     
     if(picked == null) return;
@@ -120,15 +136,14 @@ class _SessionEditorSheetState extends State<SessionEditorSheet>{
       }else{
         _endTime = picked;
       }
+      _errorMessage = null;
     });
   }
 
   int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
 
   void _showError(String message){
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    setState(() => _errorMessage = message);
   }
 
   void _save() {
@@ -190,6 +205,33 @@ class _SessionEditorSheetState extends State<SessionEditorSheet>{
               ],
             ),
             const SizedBox(height: 8),
+
+            if(_errorMessage != null) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.5),
+                    width: 1
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ],
 
             _buildLabel('DÍA'),
             const SizedBox(height: 8),

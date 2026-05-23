@@ -3,10 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
 import 'package:reminder_app/core/widgets/create_options_sheet.dart';
+import 'package:reminder_app/data/course_repository.dart';
+import 'package:reminder_app/data/period_repository.dart';
+import 'package:reminder_app/data/reminder_repository.dart';
 import 'package:reminder_app/data/schedule_repository.dart';
 import 'package:reminder_app/data/user_repository.dart';
 import 'package:reminder_app/features/auth/login_screen.dart';
+import 'package:reminder_app/models/course.dart';
+import 'package:reminder_app/models/reminder.dart';
 import 'package:reminder_app/models/schedule_item.dart';
+  import 'package:reminder_app/models/period.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,18 +23,33 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreen extends State<HomeScreen> {
   final _userRepository = UserRepository();
+  final _courseRepository = CourseRepository();
+  final _reminderRepository = ReminderRepository();
+  final _periodRepository = PeriodRepository();
+
+  late final Stream<List<Course>> _coursesStream;
+  late final Stream<List<Reminder>> _remindersStream;
+  late final Stream<List<Period>> _periodsStream;
+  late final Stream<int> _reminderCount;
+  late final Stream<int> _courseCount;
+  late final Stream<int> _periodCount;
+
   String _displayName = 'Usuario';
-  final _scheduleRepository = ScheduleRepository();
-  List<ScheduleItem> _todayList = [];
-  List<ScheduleItem> _upcomingList = [];
-  bool _isLoading = true;
   String _avatarIcon = 'anonimo';
+
 
   @override
   void initState() {
     super.initState();
     _loadCurrentUser();
-    _loadSchedule();
+
+    _coursesStream = _courseRepository.watchAll();
+    _remindersStream = _reminderRepository.watchAll();
+    _periodsStream = _periodRepository.watchAll();
+    
+    _reminderCount = _reminderRepository.watchAll().map((list) => list.length);
+    _courseCount = _courseRepository.watchAll().map((list) => list.length);
+    _periodCount = _periodRepository.watchAll().map((list) => list.length);
   }
 
   Future<void> _loadCurrentUser() async {
@@ -38,23 +59,6 @@ class _HomeScreen extends State<HomeScreen> {
     setState(() {
       _displayName = user?.name ?? 'Usuario';
       _avatarIcon = user?.avatarIcon ?? 'anonimo';
-    });
-  }
-
-  Future<void> _loadSchedule() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-
-    if (userId == null) return;
-
-    final results = await Future.wait([
-      _scheduleRepository.getTodaySchedule(userId),
-      _scheduleRepository.getUpcomingSchedule(userId),
-    ]);
-
-    setState(() {
-      _todayList = results[0];
-      _upcomingList = results[1];
-      _isLoading = false;
     });
   }
 
@@ -98,20 +102,103 @@ class _HomeScreen extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050505), // Deepest black background
+      backgroundColor: AppColors.backgroundDeep,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 32),
-              _buildStatsRow(),
-              const SizedBox(height: 40),
+        child: StreamBuilder<List<Course>>(
+          stream: _coursesStream,
+          builder: (context, coursesSnap) {
+            return StreamBuilder<List<Reminder>>(
+              stream: _remindersStream,
+              builder: (context, remindersSnap) {
+                return StreamBuilder<List<Period>>(
+                  stream: _periodsStream,
+                  builder: (context, periodsSnap) {
+                    final courses = coursesSnap.data ?? [];
+                    final reminders = remindersSnap.data ?? [];
+                    final periods = periodsSnap.data ?? [];
 
-              const Text(
-                "Horario de Hoy",
+                    // isLoading verdadero si cualquiera de los 3 aún no entrega data
+                    final isLoading = coursesSnap.connectionState == ConnectionState.waiting ||
+                        remindersSnap.connectionState == ConnectionState.waiting ||
+                        periodsSnap.connectionState == ConnectionState.waiting;
+
+                    final today = ScheduleRepository.buildToday(
+                      courses: courses,
+                      reminders: reminders,
+                      periods: periods,
+                    );
+                    final upcoming = ScheduleRepository.buildUpcoming(
+                      courses: courses,
+                      reminders: reminders,
+                      periods: periods,
+                    );
+
+                    return _buildContent(today, upcoming, isLoading);
+                  },
+                );
+              },
+            );
+          },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.purplePrimary,
+        foregroundColor: Colors.white,
+        onPressed: () => CreateOptionsSheet.show(context),
+        child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: const BottomNavBar(currentRoute: '/home'),
+    );
+  }
+
+  Widget _buildContent(List<ScheduleItem> today, List<ScheduleItem> upcoming, bool isLoading){
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 32),
+
+          _buildStatsRow(),
+          const SizedBox(height: 40),
+
+          const Text(
+            "Pendientes Hoy",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          if(isLoading)
+            const Center(child: CircularProgressIndicator(color: AppColors.purplePrimary))
+          else if (today.isEmpty)
+            const Text(
+              "Nada pendiente para hoy",
+              style: TextStyle(color: Colors.white54),
+            )
+          else
+            ...today.map(
+              (item) => _buildScheduleCard(
+                time: item.time, 
+                title: item.title, 
+                subtitle: item.subtitle, 
+                accentColor: item.accentColor,
+                icon: item.icon,
+              ),
+            ),
+          const SizedBox(height: 40),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: const [
+              Text(
+                "Próximos",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -119,95 +206,46 @@ class _HomeScreen extends State<HomeScreen> {
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 24),
 
-              if (_isLoading)
-                const Center(child: CircularProgressIndicator())
-              else if (_todayList.isEmpty)
-                const Text(
-                  'Sin horario para hoy',
-                  style: TextStyle(color: Colors.white54),
-                )
-              else
-                ..._todayList.map(
-                  (item) => _buildScheduleCard(
-                    time: item.time,
-                    title: item.title,
-                    subtitle: item.subtitle,
-                    accentColor: item.accentColor,
-                    icon: item.icon,
-                  ),
+              Text(
+                "Ver Todo",
+                style: TextStyle(
+                  color: AppColors.purpleAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
                 ),
-
-              const SizedBox(height: 40),
-
-              // Upcoming Section Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    "Próximos",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    "VER TODO",
-                    style: TextStyle(
-                      color: const Color(0xFFEEDDFF),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Upcoming Horizontal List
-              SizedBox(
-                height: 140,
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _upcomingList.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Nada próximo',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      )
-                    : ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _upcomingList.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 16),
-                        itemBuilder: (_, i) {
-                          final item = _upcomingList[i];
-                          return _buildUpcomingCard(
-                            title: item.title,
-                            subtitle: item.subtitle,
-                            icon: item.icon,
-                            accentColor: item.accentColor,
-                          );
-                        },
-                      ),
               ),
             ],
           ),
-        ),
-      ),
+          const SizedBox(height: 20),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.purplePrimary,
-        foregroundColor: Colors.white,
-        onPressed: () => CreateOptionsSheet.show(context),
-        child: const Icon(Icons.add),
+          SizedBox(
+            height: 140,
+            child: isLoading ? const Center(
+              child: CircularProgressIndicator(color: AppColors.purplePrimary)) : upcoming . isEmpty ? const Center(
+                child: Text(
+                  "Nada próximo",
+                  style: TextStyle(color: Colors.white54),
+                ),
+              )
+              : ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: upcoming.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 16),
+                itemBuilder: (_, i){
+                  final item = upcoming[i];
+                  return _buildUpcomingCard(
+                    title: item.title, 
+                    subtitle: item.subtitle, 
+                    icon: item.icon, 
+                    accentColor: item.accentColor
+                  );
+                },
+              ),
+          ),
+        ],
       ),
-      // Custom Bottom Navigation
-      bottomNavigationBar: const BottomNavBar(currentRoute: '/home'),
     );
   }
 
@@ -253,7 +291,7 @@ class _HomeScreen extends State<HomeScreen> {
           ],
         ),
         IconButton(
-          icon: const Icon(Icons.notifications, color: Color(0xFFB483FF)),
+          icon: const Icon(Icons.notifications, color: AppColors.purpleLight),
           onPressed: () {},
         ),
       ],
@@ -264,33 +302,58 @@ class _HomeScreen extends State<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildStatCard('12', 'RECORDATORIOS', const Color(0xFFFFB054)),
-        _buildStatCard('4', 'CURSOS', const Color(0xFFB483FF)),
-        _buildStatCard('08', 'APUNTES', const Color(0xFF4EE6D3)),
+        _buildStatCard(
+          stream: _reminderCount, 
+          label: 'Recordatorios', 
+          color: AppColors.orange,
+        ),
+        
+        _buildStatCard(
+          stream: _courseCount, 
+          label: 'Cursos', 
+          color: AppColors.purpleLight,
+        ),
+        
+        _buildStatCard(
+          stream: _periodCount, 
+          label: 'Periodos', 
+          color: AppColors.cyan
+        ),
       ],
     );
   }
 
-  Widget _buildStatCard(String number, String label, Color color) {
+  Widget _buildStatCard({
+    required Stream<int> stream,
+    required String label,
+    required Color color,
+  }) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E), // Dark card background
+          color: AppColors.card, // Dark card background
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           children: [
-            Text(
-              number,
-              style: TextStyle(
-                color: color,
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+            StreamBuilder<int>(
+              stream: stream, 
+              builder: (context, snapshot){
+                final count = snapshot.data ?? 0;
+                return Text(
+                  count.toString(),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
+                );
+              },
+            ),            
             const SizedBox(height: 4),
+            
             Text(
               label,
               style: const TextStyle(
@@ -335,7 +398,7 @@ class _HomeScreen extends State<HomeScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF1C1C1E),
+                color: AppColors.card,
                 borderRadius: BorderRadius.circular(20),
                 // The colored left border effect
                 border: Border(left: BorderSide(color: accentColor, width: 4)),
@@ -384,7 +447,7 @@ class _HomeScreen extends State<HomeScreen> {
       width: 160,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(24),
         border: Border(left: BorderSide(color: accentColor, width: 4)),
       ),
@@ -413,57 +476,6 @@ class _HomeScreen extends State<HomeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(Icons.home, 'INICIO', isActive: true),
-          _buildNavItem(Icons.calendar_today, 'HORARIO'),
-          _buildNavItem(Icons.share, 'COMPARTIR'),
-          _buildNavItem(Icons.person, 'PERFIL'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, {bool isActive = false}) {
-    return 
-    
-    Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: isActive
-              ? const BoxDecoration(
-                  color: Color(0xFF9D65FF),
-                  shape: BoxShape.circle,
-                )
-              : null,
-          child: Icon(icon, color: isActive ? Colors.white : Colors.white24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.white24,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
     );
   }
 }

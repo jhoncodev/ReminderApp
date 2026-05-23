@@ -20,7 +20,7 @@ class CreateReminderScreen extends StatefulWidget {
 }
 
 class _CreateReminderScreenState extends State<CreateReminderScreen> {
-  final _activityRepo = ReminderRepository();
+  final _reminderRepo = ReminderRepository();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
@@ -67,7 +67,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _saveActivity() async {
+  Future<void> _saveReminder() async {
     if (_isSaving) return;
 
     final name = nameController.text.trim();
@@ -117,9 +117,9 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
           createdAt: original.createdAt,
           updatedAt: now,
         );
-        await _activityRepo.update(updated);
+        await _reminderRepo.update(updated);
       } else {
-        final newActivity = Reminder(
+        final newReminder = Reminder(
           userId: user.uid,
           name: name,
           notes: notesController.text.trim().isEmpty
@@ -135,14 +135,14 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
               : startTimeController.text,
           date: frequency == 'Una vez' ? _selectedDate : null,
         );
-        await _activityRepo.create(newActivity);
+        await _reminderRepo.create(newReminder);
       }
 
       if (!mounted) return;
       _showSnack(
         widget.isEditing
-            ? "Actividad actualizada correctamente"
-            : "Actividad creada correctamente",
+            ? "Recordatorio actualizado correctamente"
+            : "Recordatorio creado correctamente",
       );
       Navigator.pop(context);
     } catch (e) {
@@ -155,8 +155,8 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.isEditing ? "Editar Actividad" : "Crear Actividad";
-    final buttonText = widget.isEditing ? "Guardar Cambios" : "Crear Actividad";
+    final title = widget.isEditing ? "Editar Recordatorio" : "Crear Recordatorio";
+    final buttonText = widget.isEditing ? "Guardar Cambios" : "Crear Recordatorio";
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -168,13 +168,12 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Acitivity name
-              const AppLabel(text: "Nombre de la Actividad"),
+              const AppLabel(text: "Nombre del Recordatorio"),
               const SizedBox(height: 8),
               AppTextField(
                 controller: nameController,
-                hint: "Ej. Sesión de Yoga",
+                hint: "Ej. Examen la próxima semana",
               ),
-
               const SizedBox(height: 20),
 
               // Notes
@@ -185,7 +184,6 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                 hint: "Detalles adicionales ...",
                 maxLines: 3,
               ),
-
               const SizedBox(height: 20),
 
               // Amount
@@ -196,14 +194,12 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                 hint: "Monto (opcional)",
                 keyboardType: TextInputType.number,
               ),
-
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Frequency
               const AppLabel(text: "Frecuencia"),
               const SizedBox(height: 8),
               _frequencySelector(),
-
               const SizedBox(height: 20),
 
               // Days
@@ -217,6 +213,8 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                   });
                 },
               ),
+              const SizedBox(height: 20),
+
               const AppLabel(text: "Hora de Inicio"),
               const SizedBox(height: 8),
               GestureDetector(
@@ -239,9 +237,9 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
+
               if (frequency == "Una vez") ...[
-                const SizedBox(height: 20),
                 const AppLabel(text: "Fecha"),
                 const SizedBox(height: 8),
                 GestureDetector(
@@ -287,11 +285,14 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
               ],
+              const SizedBox(height: 20),
+
               // Create button
               PrimaryGradientButton(
                 text: buttonText,
-                onPressed: _isSaving ? null : _saveActivity,
+                onPressed: _isSaving ? null : _saveReminder,
                 glow: true,
               ),
             ],

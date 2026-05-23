@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
+import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/models/course.dart';
 import 'package:reminder_app/models/course_session.dart';
+import 'package:reminder_app/models/period.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -30,6 +33,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<Course> _courses = [];
   bool _loading = true;
   late DateTime _startOfWeek;
+  final _periodRepository = PeriodRepository();
+  List<Period> _periods = [];
+  String? _selectedPeriodId;
 
   // ── lifecycle ──────────────────────────────────────────────────────────────
   @override
@@ -37,6 +43,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     super.initState();
     _calculateCurrentWeek();
     _loadCourses();
+    _loadPeriods();
   }
 
   void _calculateCurrentWeek() {
@@ -81,8 +88,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     } catch (e) {
       // 3. Did Firebase throw a fit? (e.g., Security Rules, Missing Index)
-      print("❌ DEBUG: Caught an error while fetching: $e");
+      debugPrint("❌ DEBUG: Caught an error while fetching: $e");
       setState(() => _loading = false); 
+    }
+  }
+
+  Future<void> _loadPeriods() async {
+    try {
+      final periods = await _periodRepository.getAll();
+      if (!mounted) return;
+      setState(() => _periods = periods);
+    } catch (e) {
+      debugPrint('Error cargando periodos: $e');
     }
   }
 
@@ -113,6 +130,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       Color(0xFF06D6A0),
     ];
     return palette[index % palette.length];
+  }
+
+  List<Course> get _filteredCourses {
+    if (_selectedPeriodId == null) return _courses;
+    return _courses
+      .where((c) => c.academicPeriodId == _selectedPeriodId)
+      .toList();
+  }
+
+  String get _selectedPeriodLabel {
+    if (_selectedPeriodId == null) return 'Todos los periodos';
+    final period = _periods.firstWhere(
+      (p) => p.id == _selectedPeriodId,
+      orElse: () => Period(
+        userId: '', 
+        name: 'Todos los periodos', 
+        startDate: DateTime.now(), 
+        endDate: DateTime.now(), 
+        createdAt: DateTime.now(), 
+        updatedAt: DateTime.now(),
+      ),
+    );
+    return period.name;
   }
 
   // ── build ──────────────────────────────────────────────────────────────────
@@ -159,23 +199,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               letterSpacing: -0.5,
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white24),
-              borderRadius: BorderRadius.circular(8),
+          GestureDetector(
+            onTap: _openPeriodSelector,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white24),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    _selectedPeriodLabel,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white54)
+                ],
+              ),
             ),
-            child: const Row(
-              children: [
-                Text(
-                  'Week',
-                  style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500),
-                ),
-                SizedBox(width: 4),
-                Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white54, size: 20),
-              ],
-            ),
-          ),
+          )
         ],
       ),
     );
@@ -282,9 +328,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Widget _buildDayColumn(int dayIndex) {
     final daySessions = <_SessionEntry>[];
-
-    for (int ci = 0; ci < _courses.length; ci++) {
-      final course = _courses[ci];
+    final courses = _filteredCourses;
+    for (int ci = 0; ci < courses.length; ci++) {
+      final course = courses[ci];
       for (final session in course.sessions) {
         if (session.dayOfWeek == dayIndex) {
           daySessions.add(_SessionEntry(course: course, session: session, colorIndex: ci));
@@ -369,6 +415,85 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openPeriodSelector() {
+    showModalBottomSheet(
+      context: context, 
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Filtrar por periodo',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildPeriodOption(
+                sheetContext: sheetContext,
+                label: 'Todos los periodos',
+                periodId: null,
+              ),
+              for (final period in _periods)
+                _buildPeriodOption(
+                  sheetContext: sheetContext,
+                  label: period.name,
+                  periodId: period.id,
+                ),
+            ],
+          ),
+        )
+      )
+    );
+  }
+
+  Widget _buildPeriodOption({
+    required BuildContext sheetContext,
+    required String label,
+    required String? periodId,
+  }) {
+    final isSelected = _selectedPeriodId == periodId;
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedPeriodId = periodId);
+        Navigator.pop(sheetContext);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: isSelected ? AppColors.purplePrimary : AppColors.hint,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white70,
+                  fontSize: 15,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -5,14 +5,14 @@ import 'package:reminder_app/data/reminder_repository.dart';
 import 'package:reminder_app/features/home/create_reminder_screen.dart';
 import 'package:reminder_app/models/reminder.dart';
 
-class ActivityScreen extends StatefulWidget {
-  const ActivityScreen({super.key});
+class ReminderScreen extends StatefulWidget {
+  const ReminderScreen({super.key});
 
   @override
-  State<ActivityScreen> createState() => _ActivityScreenState();
+  State<ReminderScreen> createState() => _ReminderScreenState();
 }
 
-class _ActivityScreenState extends State<ActivityScreen> {
+class _ReminderScreenState extends State<ReminderScreen> {
   final _repo = ReminderRepository();
 
   static const _dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -28,7 +28,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text(
-          "Eliminar actividad",
+          "Eliminar recordatorio",
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
@@ -91,7 +91,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const DarkAppBar(title: "Actividades"),
+      appBar: const DarkAppBar(title: "Recordatorios"),
       body: StreamBuilder<List<Reminder>>(
         stream: _repo.watchAll(),
         builder: (context, snapshot) {
@@ -106,7 +106,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  "Error al cargar actividades: ${snapshot.error}",
+                  "Error al cargar recordatorios: ${snapshot.error}",
                   style: const TextStyle(color: Colors.white70),
                   textAlign: TextAlign.center,
                 ),
@@ -114,20 +114,20 @@ class _ActivityScreenState extends State<ActivityScreen> {
             );
           }
 
-          final activities = snapshot.data ?? [];
-          if (activities.isEmpty) {
+          final reminders = snapshot.data ?? [];
+          if (reminders.isEmpty) {
             return const _EmptyState();
           }
 
           return ListView.separated(
             padding: const EdgeInsets.all(20),
-            itemCount: activities.length,
+            itemCount: reminders.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (_, index) => _ActivityTile(
-              reminder: activities[index],
+            itemBuilder: (_, index) => _ReminderTile(
+              reminder: reminders[index],
               formatDays: _formatDays,
-              onEdit: () => _openEdit(activities[index]),
-              onDelete: () => _confirmDelete(activities[index]),
+              onEdit: () => _openEdit(reminders[index]),
+              onDelete: () => _confirmDelete(reminders[index]),
             ),
           );
         },
@@ -156,7 +156,7 @@ class _EmptyState extends StatelessWidget {
             Icon(Icons.check_circle, color: AppColors.purplePrimary, size: 64),
             SizedBox(height: 16),
             Text(
-              "Aún no tienes actividades",
+              "Aún no tienes recordatorios",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -165,7 +165,7 @@ class _EmptyState extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              "Toca el botón + para crear tu primera actividad.",
+              "Toca el botón + para crear tu primer recordatorio.",
               style: TextStyle(color: AppColors.hint, fontSize: 14),
               textAlign: TextAlign.center,
             ),
@@ -176,13 +176,13 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _ActivityTile extends StatelessWidget {
+class _ReminderTile extends StatelessWidget {
   final Reminder reminder;
   final String Function(List<int>) formatDays;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const _ActivityTile({
+  const _ReminderTile({
     required this.reminder,
     required this.formatDays,
     required this.onEdit,

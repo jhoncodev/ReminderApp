@@ -26,10 +26,10 @@ class BottomNavBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavItem(context, Icons.home,          'HOME',     '/home'),
-          _buildNavItem(context, Icons.calendar_today,'SCHEDULE', '/schedule'),
-          _buildNavItem(context, Icons.share,         'SHARE',    '/share'),
-          _buildNavItem(context, Icons.person,        'PROFILE',  '/profile'),
+          _buildNavItem(context, Icons.home,          'INICIO',     '/home'),
+          _buildNavItem(context, Icons.calendar_today,'HORARIO', '/schedule'),
+          _buildNavItem(context, Icons.share,         'COMPARTIR',    '/share'),
+          _buildNavItem(context, Icons.person,        'PERFIL',  '/profile'),
         ],
       ),
     );

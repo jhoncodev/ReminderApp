@@ -192,11 +192,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 32),
               // Full name
-              const AppLabel(text: 'Nombre Completo'),
+              const AppLabel(text: 'Nombre y Apellido'),
               const SizedBox(height: 8),
               AppTextField(
                 controller: fullNameController,
-                hint: "Messi Ronaldo",
+                hint: "Nombre y Apellido",
               ),
               const SizedBox(height: 20),
 
@@ -205,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 8),
               AppTextField(
                 controller: emailController,
-                hint: "messiro@gmail.com",
+                hint: "apellido@gmail.com",
               ),
               const SizedBox(height: 20),
 

@@ -1,177 +1,207 @@
-// lib/data/schedule_repository.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/models/course.dart';
+import 'package:reminder_app/models/period.dart';
+import 'package:reminder_app/models/reminder.dart';
 import 'package:reminder_app/models/schedule_item.dart';
 
 class ScheduleRepository {
-  final _db = FirebaseFirestore.instance;
+  ScheduleRepository._();
 
-  // Flutter weekday: Mon=1 … Sun=7  →  your schema: Mon=0 … Sun=6
-  int get _todayDow => DateTime.now().weekday - 1;
+  // Decide si un curso debe mostrarse el dia que se abre la aplicacion, considerando el perdiodo
+  // - Curso sin periodo asociado: siempre visible
+  // - Curso con periodo: solo si la fecha actual cae dentro del rango.
+  // - Curso con periodo que ya no existe (borrado): descartar.
+  static bool _isCourseInActivePeriod(
+    Course course,
+    List<Period> periods,
+    DateTime now,
+  ){
+    if (course.academicPeriodId == null) return true;
 
-  // Days remaining this week after today (for "Upcoming")
-  List<int> get _remainingDow {
-    final today = _todayDow;
-    return List.generate(6 - today, (i) => today + 1 + i);
-  }
-
-  // ── TODAY ──────────────────────────────────────────────────────────────
-  Future<List<ScheduleItem>> getTodaySchedule(String userId) async {
-    final results = await Future.wait([
-      _getCoursesForDays(userId, [_todayDow]),
-      _getActivitiesForDays(userId, [_todayDow]),
-    ]);
-    final items = [...results[0], ...results[1]];
-    items.sort((a, b) => a.time.compareTo(b.time));
-    return items;
-  }
-
-  // ── UPCOMING (rest of the week) ────────────────────────────────────────
-  Future<List<ScheduleItem>> getUpcomingSchedule(String userId) async {
-    final now = DateTime.now();
-    final startOfTomorrow = DateTime(now.year, now.month, now.day + 1);
-    final List<ScheduleItem> items = [];
-
-    // Activities tipo "Una vez" con fecha futura
-    final activitiesSnap = await _db
-        .collection('activities')
-        .where('userId', isEqualTo: userId)
-        .where('frequency', isEqualTo: 'Una vez')
-        .get();
-
-    for (final doc in activitiesSnap.docs) {
-      final data = doc.data();
-      final date = (data['date'] as Timestamp?)?.toDate();
-      if (date != null && date.isAfter(startOfTomorrow)) {
-        items.add(
-          ScheduleItem(
-            id: doc.id,
-            title: data['name'] ?? '',
-            subtitle: _activitySubtitle(data),
-            time: data['startTime'] ?? '00:00',
-            accentColor: const Color(0xFF4EE6D3),
-            icon: Icons.self_improvement,
-            type: ScheduleItemType.activity,
-          ),
-        );
+    // Buscamos el periodo asociado al curso
+    Period? period;
+    for (final p in periods){
+      if (p.id == course.academicPeriodId){
+        period = p;
+        break;
       }
     }
 
-    // Cursos con sesiones en los días restantes de la semana
-    final courseItems = await _getCoursesForDays(userId, _remainingDow);
-    items.addAll(courseItems);
+    if (period == null) return false;
+
+    // Comparar solo año/mes/día para evitar problemas con horas/timezones
+    final today = DateTime(now.year, now.month, now.day);
+    
+    final start = DateTime(
+      period.startDate.year,
+      period.startDate.month,
+      period.startDate.day,
+    );
+
+    final end = DateTime(
+      period.endDate.year,
+      period.endDate.month,
+      period.endDate.day,
+    );
+
+    return !today.isBefore(start) && !today.isAfter(end);
+  }
+
+  // Aplicamos el filtro de periodo dentro de la fecha que se usa la app para no  mostrar cursos de periodos que ya pasaron
+  static List<Course> _filterCoursesByActivePeriod(List<Course> courses, List<Period> periods){
+    final now = DateTime.now();
+    return courses.where((c) => _isCourseInActivePeriod(c, periods, now)).toList();
+  }
+
+  static List<ScheduleItem> buildToday({
+    required List<Course> courses,
+    required List<Reminder> reminders,
+    required List<Period> periods,
+  }){
+    final today = DateTime.now().weekday - 1;
+    final activeCourses = _filterCoursesByActivePeriod(courses, periods);
+
+    final items = <ScheduleItem>[
+      ..._courseItemsForDays(activeCourses, [today]),
+      ..._reminderItemsForToday(reminders),
+    ];
 
     items.sort((a, b) => a.time.compareTo(b.time));
     return items;
   }
 
-  // ── PRIVATE HELPERS ────────────────────────────────────────────────────
+  static List<ScheduleItem> buildUpcoming({
+    required List<Course> courses,
+    required List<Reminder> reminders,
+    required List<Period> periods,
+  }){
+    final now = DateTime.now();
+    final today = now.weekday - 1;
+    final remainingDow = List.generate(6 - today, (i) => today + 1 + i);
+    
+    final activeCourses = _filterCoursesByActivePeriod(courses, periods);
 
-  Future<List<ScheduleItem>> _getActivitiesForDays(
-    String userId,
-    List<int> days,
-  ) async {
-    final activitiesSnap = await _db
-        .collection('activities')
-        .where('userId', isEqualTo: userId)
-        .get();
+    final items = <ScheduleItem>[
+      ..._courseItemsForDays(activeCourses, remainingDow),
+      ..._reminderItemsForUpComing(reminders, remainingDow, now),
+    ];
 
-    final List<ScheduleItem> items = [];
+    items.sort((a, b) => a.time.compareTo(b.time));
+    return items;
+  }
 
-    for (final doc in activitiesSnap.docs) {
-      final data = doc.data();
-      final frequency = data['frequency'] ?? 'Una vez';
+  static List<ScheduleItem> _courseItemsForDays(List<Course> courses, List<int> days){
+    final items = <ScheduleItem>[];
+    for (final c in courses){
+      for (final s in c.sessions){
+        if (!days.contains(s.dayOfWeek)) continue;
+        items.add(
+          ScheduleItem(
+            id: '${c.id}_${s.dayOfWeek}', 
+            title: c.name, 
+            subtitle: s.roomName != null ? 'Curso • ${s.roomName}' : 'Curso', 
+            time: s.startTime, 
+            accentColor: AppColors.purpleLight, 
+            icon: Icons.school_outlined, 
+            type: ScheduleItemType.course,
+          )
+        );
+      }
+    }
+    return items;
+  }
 
-      // scheduleDays is an array inside the document, not a subcollection
-      final scheduleDays = List<int>.from(data['scheduleDays'] ?? []);
+  static List<ScheduleItem> _reminderItemsForToday(List<Reminder> reminders){
+    final now = DateTime.now();
+    final today = now.weekday - 1;
+    final items = <ScheduleItem>[];
 
+    for (final r in reminders){
       bool matches = false;
-
-      if (frequency == 'Diario') {
+      if (r.frequency == 'Diario'){
         matches = true;
-      } else if (frequency == 'Semanal') {
-        matches = scheduleDays.any((d) => days.contains(d));
-      } else if (frequency == 'Una vez') {
-        // Match by date field instead of day_of_week
-        final date = (data['date'] as Timestamp?)?.toDate();
-        if (date != null) {
-          final now = DateTime.now();
-          // For today: check if date is today
-          matches =
-              days.contains(_todayDow) &&
-              date.year == now.year &&
-              date.month == now.month &&
-              date.day == now.day;
+      } else if(r.frequency == 'Semanal'){
+        matches = r.scheduleDays.contains(today);
+      } else if (r.frequency == 'Una vez' && r.date != null){
+        matches = r.date!.year == now.year && r.date!.month == now.month && r.date!.day == now.day;
+      }
+      if (matches) items.add(_reminderToItem(r));
+    }
+    return items;
+  }
+
+  // Genera items para cada día restante de la semana
+  // - Reminders "Diario": una card por cada día restante
+  // - Reminders "Semana": una card por cad día restante que coincida
+  // - Reminders "Una vez": una sola card si la fecha cae dentro de la seman actual
+  static List<ScheduleItem> _reminderItemsForUpComing(
+    List<Reminder> reminders,
+    List<int> remainingDow,
+    DateTime now,
+  ){
+    final items = <ScheduleItem>[];
+    final today = now.weekday - 1;
+
+    // Límites de la semana actual restante: desde el siguiente dia hasta el últumo día de la seman domingo
+    final daysUntilSunday = 6 - today;
+    final endOfWeek = DateTime(
+      now.year,
+      now.month,
+      now.day + daysUntilSunday,
+      23,
+      59,
+      59,
+    );
+    final startOfTomorrow = DateTime(now.year, now.month, now.day + 1);
+
+    for (final r in reminders){
+      if (r.frequency == 'Diario'){
+        for (final dow in remainingDow){
+          items.add(_reminderToItemForDay(r, dow));
+        }
+      }else if (r.frequency == 'Semanal'){
+        for (final dow in remainingDow){
+          if (r.scheduleDays.contains(dow)){
+            items.add(_reminderToItemForDay(r, dow));
+          }
+        }
+      }else if (r.frequency == 'Una vez' && r.date != null){
+        if (r.date!.isAfter(startOfTomorrow) && r.date!.isBefore(endOfWeek)){
+          items.add(_reminderToItem(r));
         }
       }
-
-      if (matches) {
-        items.add(
-          ScheduleItem(
-            id: doc.id,
-            title: data['name'] ?? '',
-            subtitle: _activitySubtitle(data),
-            time: data['startTime'] ?? '00:00', // camelCase
-            accentColor: const Color(0xFF4EE6D3),
-            icon: Icons.self_improvement,
-            type: ScheduleItemType.activity,
-          ),
-        );
-      }
     }
-
     return items;
   }
 
-  Future<List<ScheduleItem>> _getCoursesForDays(
-    String userId,
-    List<int> days,
-  ) async {
-    final coursesSnap = await _db
-        .collection('courses')
-        .where('userId', isEqualTo: userId)
-        .get();
-
-    final List<ScheduleItem> items = [];
-
-    for (final doc in coursesSnap.docs) {
-      final data = doc.data();
-      final name = data['name'] as String? ?? '';
-
-      // Leer el array de sesiones embebido
-      final sessionsRaw = (data['sessions'] as List<dynamic>?) ?? [];
-
-      // Por cada sesión, si su día coincide con los buscados, agregamos un item
-      for (final raw in sessionsRaw) {
-        final session = raw as Map<String, dynamic>;
-        final dayOfWeek = session['dayOfWeek'] as int;
-
-        if (!days.contains(dayOfWeek)) continue;
-
-        final startTime = session['startTime'] as String? ?? '00:00';
-        final roomName = session['roomName'] as String?;
-
-        items.add(
-          ScheduleItem(
-            // ID único por curso+día para no colisionar cuando hay varias sesiones
-            id: '${doc.id}_$dayOfWeek',
-            title: name,
-            subtitle: roomName != null ? 'Curso • $roomName' : 'Curso',
-            time: startTime,
-            accentColor: const Color(0xFFB483FF),
-            icon: Icons.school_outlined,
-            type: ScheduleItemType.course,
-          ),
-        );
-      }
-    }
-
-    return items;
+  static ScheduleItem _reminderToItem(Reminder r){
+    return ScheduleItem(
+      id: r.id ?? '', 
+      title: r.name, 
+      subtitle: r.budgetAmount != null ? 'Finanza • ${r.frequency}' : 'Recordatorio • ${r.frequency}', 
+      time: r.startTime ?? '00:00', 
+      accentColor: AppColors.cyan, 
+      icon: Icons.self_improvement, 
+      type: ScheduleItemType.activity,
+    );
   }
 
-  String _activitySubtitle(Map<String, dynamic> data) {
-    final freq = data['frequency'] ?? '';
-    final budget = data['budget_amount'];
-    return budget != null ? 'Finanza • $freq' : 'Recordatorio • $freq';
+  // Igual que _reminderToItem pero con id único por día,
+  // para que Flutter no se queje de keys duplicadas cuando un
+  // reminder Diario genera múltiples cards (una por cada día restante).
+  static ScheduleItem _reminderToItemForDay(Reminder r, int dayOfWeek) {
+    return ScheduleItem(
+      id: '${r.id ?? ''}_$dayOfWeek',
+      title: r.name,
+      subtitle: r.budgetAmount != null
+          ? 'Finanza • ${r.frequency}'
+          : 'Recordatorio • ${r.frequency}',
+      time: r.startTime ?? '00:00',
+      accentColor: AppColors.cyan,
+      icon: Icons.self_improvement,
+      type: ScheduleItemType.activity,
+    );
   }
+
 }

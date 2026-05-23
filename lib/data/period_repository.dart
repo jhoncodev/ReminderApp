@@ -60,4 +60,14 @@ class PeriodRepository {
     final snapshot = await _periodsRef.doc(id).get();
     return snapshot.data();
   }
+
+  Future<List<Period>> getAll() async {
+    final snapshot = await _periodsRef
+      .where('userId', isEqualTo: _currentUserId)
+      .orderBy('startDate', descending: true)
+      .get();
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+
 }

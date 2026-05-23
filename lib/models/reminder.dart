@@ -39,7 +39,7 @@ class Reminder {
       userId: data['userId'] as String,
       name: data['name'] as String,
       notes: data['notes'] as String?,
-      budgetAmount: data['budgetAmount'] as double?,
+      budgetAmount: (data['budgetAmount'] as num?)?.toDouble(),
       frequency: data['frequency'] as String,
       scheduleDays: List<int>.from(data['scheduleDays'] ?? []),
       createdAt: (data['createdAt'] as Timestamp).toDate(),

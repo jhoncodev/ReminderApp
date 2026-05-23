@@ -1,7 +1,7 @@
 # Plan de Trabajo Grupal - Reminder App
 
 > Documento de planificación compartida entre los 3 integrantes del proyecto.
-> Última actualización: 2026-05-17
+> Última actualización: 2026-05-23
 
 ---
 
@@ -206,6 +206,8 @@ class Classroom {
 - Entidad `Note` (apuntes) libre y por curso.
 - Detección de conflictos de horario al crear/editar curso.
 - Notificaciones locales (`flutter_local_notifications`) para recordatorios, calificaciones y cursos del día.
+- **Navegación temporal en Horario:** la fecha del header siempre muestra la semana actual del calendario. Permitir navegar semanas (`< >`) o saltar a la semana del periodo seleccionado, para repasar semestres pasados con su calendario correcto. Decidir comportamiento cuando el periodo está en curso vs. ya terminado.
+- **Validación al editar fechas de un periodo:** si el periodo tiene cursos asociados, mostrar advertencia (NO bloqueo) al cambiar fechas, ya que el filtro automático de Home podría ocultar esos cursos. Texto sugerido: "Este periodo tiene N cursos; cambiar las fechas puede ocultarlos del inicio. ¿Continuar?".
 
 ### Sprint 3 (posterior)
 - Modo offline + sync (Firestore lo trae built-in, hay que verificar config).
@@ -258,10 +260,14 @@ Cada integrante elige según prioridad e interés. Marcar con [x] al completar y
 - Sin pantalla separada "Add multiple": la lista de sesiones vive en la pantalla principal del curso.
 
 ### Bloque D - Pantalla Schedule semanal
-- [ ] Crear `lib/features/schedule/schedule_screen.dart`.
-- [ ] Implementar grid de horario semanal (columnas = días Lun-Dom, filas = horas 12:00am-11:59pm).
-- [ ] Renderizar cursos como cards posicionadas (`Stack` + `Positioned`).
-- [ ] Conectar botón "HORARIO" del bottom nav de `home_screen.dart` a la nueva pantalla.
+- [x] Crear `lib/features/schedule/schedule_screen.dart`.
+- [x] Implementar grid de horario semanal (columnas = días Lun-Dom, filas = horas 12:00am-11:59pm).
+- [x] Renderizar cursos como cards posicionadas (`Stack` + `Positioned`).
+- [x] Conectar botón "HORARIO" del bottom nav de `home_screen.dart` a la nueva pantalla.
+- [x] Selector manual de periodos en el header de Horario (bottomsheet con "Todos los periodos" + lista). Filtra `_courses` por `academicPeriodId`. Helper `_filteredCourses` recalculado por columna.
+- [x] Método `PeriodRepository.getAll()` (Future) para carga puntual desde ScheduleScreen.
+
+**Deuda Bloque D:** días en inglés (`Mon`, `Tue`...), colores hardcoded en Scaffold/header/grid/modal, `print` con emojis en `_loadCourses`, `withOpacity()` deprecado — pulido pendiente. Adicional: la fecha del header siempre muestra "semana actual del calendario" aunque selecciones un periodo pasado (necesita navegación temporal — ver Sprint 2).
 
 ### Bloque E - Calificaciones (Grade)
 - [ ] Crear modelo `Grade` en `lib/models/grade.dart`.
@@ -273,20 +279,20 @@ Cada integrante elige según prioridad e interés. Marcar con [x] al completar y
 - [ ] Acceso a `GradeScreen` desde sheet de detalle del curso (cuando se implemente).
 
 ### Bloque F - Rename Activity → Reminder
-- [ ] Renombrar `lib/models/activity.dart` → `reminder.dart` (clase `Activity` → `Reminder`).
-- [ ] Renombrar `lib/data/activity_repository.dart` → `reminder_repository.dart`.
-- [ ] Renombrar `lib/features/home/activity_screen.dart` → `reminder_screen.dart`.
-- [ ] Renombrar `create_activity_screen.dart` → `create_reminder_screen.dart`.
-- [ ] Cambiar referencia a colección Firestore: `'activities'` → `'reminders'` en repo y en `schedule_repository.dart`.
+- [x] Renombrar `lib/models/activity.dart` → `reminder.dart` (clase `Activity` → `Reminder`).
+- [x] Renombrar `lib/data/activity_repository.dart` → `reminder_repository.dart`.
+- [x] Renombrar la clase interna `ActivityScreen` → `ReminderScreen` (+ `_ActivityScreenState` → `_ReminderScreenState`, `_ActivityTile` → `_ReminderTile`) y el título "Actividades" → "Recordatorios". Textos UI internos traducidos (eliminar, error, empty state).
+- [x] Renombrar `create_activity_screen.dart` → `create_reminder_screen.dart` + textos UI ("Crear/Editar Recordatorio", "Nombre del Recordatorio", snackbars).
+- [x] Cambiar referencia a colección Firestore: `'activities'` → `'reminders'` en repo y en `schedule_repository.dart`.
 - [ ] **Borrar la colección `activities` vieja en Firestore Console** (datos de prueba).
-- [ ] Actualizar `create_options_sheet.dart` con el nuevo nombre.
-- [ ] Asegurar que el botón en el sheet dice "Recordatorio".
+- [x] Actualizar `create_options_sheet.dart` con el nuevo nombre (`ReminderScreen` + título "Recordatorio").
+- [x] Asegurar que el botón en el sheet dice "Recordatorio" (subtitle reposicionado a contexto académico: "Exámenes, prácticas, reuniones, mensualidades").
 
 ### Bloque G - Traducción UI a español
-- [ ] `home_screen.dart`: "Today's Schedule" → "Horario de Hoy", "Upcoming" → "Próximos", "SEE ALL" → "VER TODO", "No schedule for today" → "Sin horario para hoy", "Nothing upcoming" → "Nada próximo".
-- [ ] `home_screen.dart` bottom nav: "HOME/SCHEDULE/SHARE/PROFILE" → "INICIO/HORARIO/COMPARTIR/PERFIL".
-- [ ] `home_screen.dart` stats: "REMINDERS/COURSES/ACTIVITIES" → "RECORDATORIOS/CURSOS/APUNTES" (ajustar al nuevo modelo).
-- [ ] `schedule_repository.dart`: subtitulos "Course", "Finance • $freq", "Activity • $freq" → equivalentes en español.
+- [x] `home_screen.dart`: secciones renombradas a "Pendientes Hoy" (generaliza cursos + recordatorios) y "Próximos", "Ver Todo", empty states traducidos.
+- [ ] `home_screen.dart` bottom nav (`bottom_nav_bar.dart`): "HOME/SCHEDULE/SHARE/PROFILE" → "INICIO/HORARIO/COMPARTIR/PERFIL".
+- [x] `home_screen.dart` stats: labels "Recordatorios/Cursos/Periodos" (se cambió "Apuntes" por "Periodos" porque Apuntes aún no existe como entidad).
+- [x] `schedule_repository.dart`: subtitulos "Course", "Finance • $freq", "Activity • $freq" → equivalentes en español.
 - [ ] `login_screen.dart`: snackbars de error y éxito a español.
 - [ ] `register_screen.dart`: "User created successfully!" → "Cuenta creada con éxito" y todos los mensajes.
 - [ ] **Convertir labels UPPERCASE a Title Case** en `login_screen.dart` (2), `create_activity_screen.dart` (7), `create_period_screen.dart` (3), `create_course_screen.dart` (4). Decisión tomada en Sprint 1 al refactorizar `register_screen.dart`.
@@ -354,6 +360,10 @@ lib/
 | Schedule = grid calendario (no lista) | Más visual e impresiona en presentación. |
 | Profesor/Aula a Sprint 2 | Sprint 1 ya tiene 7 bloques, sobrecargarlo es contraproducente. |
 | Login Google a Sprint 2 | Idem - prioridad menor que cerrar bugs y modelo de dominio. |
+| Filtro de cursos en Home por periodo activo según fechas (no por borrar el periodo) | Los cursos de periodos pasados no contaminan Home automáticamente. Borrar el periodo sigue disponible para casos puntuales. Cursos sin `academicPeriodId` siempre visibles. |
+| Reminders recurrentes en "Próximos": una card por ocurrencia | Diario/Semanal generan una card por cada día restante de la semana; "Una vez" se acota al domingo 23:59:59. Más fiel a la realidad que una sola card etiquetada. |
+| Selector de Horario solo "Todos los periodos" + lista de periodos | No se incluyó "Periodo activo" ni "Sin periodo asignado" para mantener el selector simple. |
+| Cast Firestore con `(x as num?)?.toDouble()` para montos | Firestore guarda `int` si el número no tiene decimales; `as double?` crashea. `num` cubre int y double. |
 
 ---
 
@@ -370,27 +380,34 @@ Estos temas se decidirán cuando lleguemos a su sprint:
 
 ## 9. Estado actual de la app
 
-### Lo que funciona (al cierre de Bloques A + B + C)
+### Lo que funciona (al cierre de Bloques A + B + C + D + F + Home reactivo)
 - Registro con selector de avatar (10 íconos) + login con Firebase Auth.
 - Cerrar sesión vía menú al tocar avatar en home.
 - Avatar mostrado en HomeScreen header.
 - CRUD de Periodos.
 - CRUD de Cursos con **sesiones múltiples** (día + hora inicio/fin + aula por sesión + apunte por curso).
-- CRUD de Recordatorios (hoy llamados "Actividades" — pendiente rename en Bloque F).
-- Home con sección "Hoy" y "Próximos" alimentada por `ScheduleRepository` (lee del array `sessions[]`).
+- CRUD de Recordatorios (UI ya 100% renombrada a "Recordatorios" — **Bloque F cerrado**).
+- Pantalla Schedule semanal en grid **con selector manual de periodos** (filtra cursos por periodo; "Todos los periodos" por defecto).
+- **Home reactivo con StreamBuilder:** stats reales (Recordatorios/Cursos/Periodos) + "Pendientes Hoy" + "Próximos" se actualizan automáticamente al crear/editar/borrar cursos o recordatorios. `ScheduleRepository` refactorizado a funciones puras de filtrado.
+- **Filtro automático por periodo activo en Home:** cursos de periodos cuyo rango de fechas no incluye "hoy" no aparecen; cursos sin periodo siempre visibles.
+- **Reminders recurrentes en "Próximos":** Diario/Semanal generan una card por cada día restante de la semana; "Una vez" se acota al fin de semana.
+- `SessionEditorSheet`: TimePicker en tema oscuro consistente con DatePicker, validación de errores inline dentro del modal (sin SnackBar oculto detrás).
 - UI dark mode con identidad visual sólida (lo mejor evaluado).
 - Helpers de formato de hora 24h↔12h en `lib/core/utils/time_helpers.dart`.
 - Bottomsheet reutilizable `SessionEditorSheet` para crear/editar sesión.
 
 ### Lo que está roto / pendiente
-- Sin pantalla Schedule semanal (botón "SCHEDULE" del nav no funciona) — **Bloque D**.
-- Sin calificaciones (Grade) ni promedio ponderado — **Bloque E**.
-- `Activity` aún no renombrado a `Reminder` (modelo + colección + UI) — **Bloque F**.
-- Textos mezclados español/inglés en home, login, register, schedule_repository — **Bloque G**.
-- Labels UPPERCASE pendientes de convertir a Title Case en 4 archivos — **Bloque G**.
-- Stats del home hardcoded ("12", "4", "08") — fuera de scope Sprint 1, queda para polish del home.
+- Sin calificaciones (Grade) ni promedio ponderado — **Bloque E** (no iniciado).
+- La pantalla de Recordatorios requería **índice compuesto en Firestore** (`userId` + `createdAt`); creado desde el link del error `failed-precondition` el 2026-05-23. El Bloque E (`grade_repository`) probablemente necesitará otro índice similar.
+- Textos pendientes de traducir en login, register, bottom nav — **Bloque G**.
+- Labels UPPERCASE pendientes de convertir a Title Case en `create_period_screen.dart`, `create_course_screen.dart`, `login_screen.dart` — **Bloque G**.
 - Falta `AuthGate` que decida Login vs Home según estado de auth al iniciar app — Sprint 2.
+- Pantallas Profile y Share son placeholders vacíos — no entrar en la demo.
 
 ### Deuda técnica conocida
-- Colores hardcoded en `home_screen.dart` (varios `Color(0xFF...)`) deberían migrar a `AppColors`.
-- `_activitySubtitle` en `schedule_repository.dart` lee `budget_amount` (snake_case) mientras `Activity.toFirestore` escribe `budgetAmount` (camelCase). Bug latente — se corrige cuando se haga Bloque F.
+- `schedule_screen.dart`: días en inglés (`Mon`-`Sun`), colores hardcoded (Scaffold, header, grid, modal de detalle), `print` con emojis en `_loadCourses` (líneas ~58-91), `withOpacity()` deprecado (usar `withValues(alpha:)`), carga manual con `Future` en vez de `CourseRepository.watchAll()` con StreamBuilder.
+- Colores hardcoded en `lib/core/widgets/bottom_nav_bar.dart` — migrar a `AppColors`.
+- Tema oscuro de pickers (`showDatePicker`, `showTimePicker`) está duplicado entre `app_date_picker_field.dart` y `session_editor_sheet.dart` — extraer a helper si aparece un tercer uso (regla de tres).
+- Cosméticos en `home_screen.dart`: typo `upcoming . isEmpty` (línea ~226, Dart lo acepta), clase de estado `_HomeScreen` debería ser `_HomeScreenState` (convención).
+- Comentarios con "actividad" en `reminder_repository.dart` — no UI, sin urgencia.
+- Typo histórico `AppColors.organe` → corregido a `orange` el 2026-05-21.

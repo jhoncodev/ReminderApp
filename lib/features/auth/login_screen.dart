@@ -86,17 +86,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // 1. Logo Icon
               Center(
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Icon(
-                    Icons.calendar_today_rounded,
-                    color: Colors.white,
-                    size: 36,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    'assets/icon/ic_full.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
@@ -104,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // 2. Title & Subtitle
               const Text(
-                'Recuérdalo',
+                'Reminder App',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
@@ -115,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                "TU GALERÍA DE INTENCIONES",
+                "Organiza Tu Aprendizaje",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey,

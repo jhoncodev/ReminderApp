@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/features/auth/auth_gate.dart';
 import 'package:reminder_app/features/auth/login_screen.dart';
 import 'package:reminder_app/features/home/home_screen.dart';
 import 'package:reminder_app/features/profile/profile_screen.dart';
@@ -19,7 +20,7 @@ class MyApp extends StatelessWidget{
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.purplePrimary),
         useMaterial3: true,
       ),
-      initialRoute: '/login',
+      home: const AuthGate(),
       routes: {
       '/login': (context) => const LoginScreen(),
       '/home': (context) => const HomeScreen(),

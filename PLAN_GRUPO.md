@@ -1,7 +1,7 @@
 # Plan de Trabajo Grupal - Reminder App
 
 > Documento de planificación compartida entre los 3 integrantes del proyecto.
-> Última actualización: 2026-05-23
+> Última actualización: 2026-06-01
 
 ---
 
@@ -199,7 +199,13 @@ class Classroom {
 - Traducción completa de UI a español.
 - Rename de `Activity` → `Reminder` (modelo + colección + UI).
 
-### Sprint 2 (siguiente)
+### Sprint 2 (en curso)
+
+**Completado:**
+- [x] **AuthGate** (2026-06-01): widget con `StreamBuilder` sobre `authStateChanges()` que decide Login/Home al abrir la app. Configurado como `home: const AuthGate()` en `app.dart` (`lib/features/auth/auth_gate.dart`).
+- [x] **Icono de la app + nombre "Reminder App"** (2026-06-01): icono adaptativo (campana blanca sobre gradiente morado #B483FF→#7A4BFF) generado con `flutter_launcher_icons` para Android e iOS. Nombre en `AndroidManifest.xml` (`android:label`) e `Info.plist` (`CFBundleDisplayName` + `CFBundleName`). Assets en `assets/icon/` (ic_full / ic_background / ic_foreground).
+
+**Pendiente:**
 - Login con Google (`google_sign_in` + Firebase).
 - Entidad `Teacher` con CRUD propio + vínculo a Course.
 - Entidad `Classroom` con CRUD propio + vínculo a CourseSession.
@@ -269,14 +275,14 @@ Cada integrante elige según prioridad e interés. Marcar con [x] al completar y
 
 **Deuda Bloque D:** días en inglés (`Mon`, `Tue`...), colores hardcoded en Scaffold/header/grid/modal, `print` con emojis en `_loadCourses`, `withOpacity()` deprecado — pulido pendiente. Adicional: la fecha del header siempre muestra "semana actual del calendario" aunque selecciones un periodo pasado (necesita navegación temporal — ver Sprint 2).
 
-### Bloque E - Calificaciones (Grade)
-- [ ] Crear modelo `Grade` en `lib/models/grade.dart`.
-- [ ] Crear `GradeRepository` en `lib/data/grade_repository.dart` (CRUD + watchByCourse).
-- [ ] Crear `lib/features/grade/grade_screen.dart` (lista de notas por curso + promedio actual).
-- [ ] Crear `lib/features/grade/create_grade_screen.dart` (form: título, valor, máximo, peso).
-- [ ] Implementar validación: suma de pesos ≤ 100, con feedback visual.
-- [ ] Calcular promedio ponderado en el header de `GradeScreen`.
-- [ ] Acceso a `GradeScreen` desde sheet de detalle del curso (cuando se implemente).
+### Bloque E - Calificaciones (Grade) ✅ CERRADO
+- [x] Crear modelo `Grade` en `lib/models/grade.dart`.
+- [x] Crear `GradeRepository` en `lib/data/grade_repository.dart` (CRUD + watchByCourse).
+- [x] Crear `lib/features/grade/grade_screen.dart` (lista de notas por curso + promedio actual).
+- [x] Crear `lib/features/grade/create_grade_screen.dart` (form: título, valor, máximo, peso).
+- [x] Implementar validación: suma de pesos ≤ 100, con feedback visual.
+- [x] Calcular promedio ponderado en el header de `GradeScreen` (escala 0-20).
+- [x] Acceso a `GradeScreen` desde el ícono de calificaciones en cada curso (`course_screen.dart`).
 
 ### Bloque F - Rename Activity → Reminder
 - [x] Renombrar `lib/models/activity.dart` → `reminder.dart` (clase `Activity` → `Reminder`).
@@ -290,12 +296,12 @@ Cada integrante elige según prioridad e interés. Marcar con [x] al completar y
 
 ### Bloque G - Traducción UI a español
 - [x] `home_screen.dart`: secciones renombradas a "Pendientes Hoy" (generaliza cursos + recordatorios) y "Próximos", "Ver Todo", empty states traducidos.
-- [ ] `home_screen.dart` bottom nav (`bottom_nav_bar.dart`): "HOME/SCHEDULE/SHARE/PROFILE" → "INICIO/HORARIO/COMPARTIR/PERFIL".
+- [x] `home_screen.dart` bottom nav (`bottom_nav_bar.dart`): "HOME/SCHEDULE/SHARE/PROFILE" → "INICIO/HORARIO/COMPARTIR/PERFIL".
 - [x] `home_screen.dart` stats: labels "Recordatorios/Cursos/Periodos" (se cambió "Apuntes" por "Periodos" porque Apuntes aún no existe como entidad).
 - [x] `schedule_repository.dart`: subtitulos "Course", "Finance • $freq", "Activity • $freq" → equivalentes en español.
-- [ ] `login_screen.dart`: snackbars de error y éxito a español.
-- [ ] `register_screen.dart`: "User created successfully!" → "Cuenta creada con éxito" y todos los mensajes.
-- [ ] **Convertir labels UPPERCASE a Title Case** en `login_screen.dart` (2), `create_activity_screen.dart` (7), `create_period_screen.dart` (3), `create_course_screen.dart` (4). Decisión tomada en Sprint 1 al refactorizar `register_screen.dart`.
+- [x] `login_screen.dart`: snackbars de error y éxito a español.
+- [x] `register_screen.dart`: "User created successfully!" → "Cuenta creada con éxito" y todos los mensajes.
+- [x] **Convertir labels UPPERCASE a Title Case** en `login_screen.dart`, `create_period_screen.dart`, `create_course_screen.dart`. (Verificado: `AppLabel` no aplica `.toUpperCase()`; los textos fuente ya están en Title Case.)
 
 ---
 
@@ -380,13 +386,18 @@ Estos temas se decidirán cuando lleguemos a su sprint:
 
 ## 9. Estado actual de la app
 
-### Lo que funciona (al cierre de Bloques A + B + C + D + F + Home reactivo)
+### Lo que funciona (al cierre de Bloques A + B + C + D + E + F + G + Home reactivo + inicio de Sprint 2)
+- **AuthGate (Sprint 2):** la app abre directo en Home si hay sesión guardada, o en Login si no, vía `StreamBuilder` sobre `authStateChanges()`. Firebase Auth persiste la sesión en el dispositivo.
+- **Icono propio + nombre "Reminder App":** icono adaptativo (campana sobre gradiente morado) en Android e iOS; nombre instalado ya no es `reminder_app`.
 - Registro con selector de avatar (10 íconos) + login con Firebase Auth.
 - Cerrar sesión vía menú al tocar avatar en home.
 - Avatar mostrado en HomeScreen header.
 - CRUD de Periodos.
 - CRUD de Cursos con **sesiones múltiples** (día + hora inicio/fin + aula por sesión + apunte por curso).
 - CRUD de Recordatorios (UI ya 100% renombrada a "Recordatorios" — **Bloque F cerrado**).
+- **Calificaciones (Bloque E cerrado):** CRUD de `Grade` por curso, promedio ponderado en escala 0-20, validación de suma de pesos ≤ 100% con feedback visual. Acceso desde el ícono de calificaciones en cada curso (`course_screen.dart`).
+- **Traducción UI completa (Bloque G cerrado):** bottom nav, snackbars de login/register y todos los labels en español/Title Case.
+- **Rebranding del login:** título "Recuérdalo" + slogan "TU GALERÍA DE INTENCIONES".
 - Pantalla Schedule semanal en grid **con selector manual de periodos** (filtra cursos por periodo; "Todos los periodos" por defecto).
 - **Home reactivo con StreamBuilder:** stats reales (Recordatorios/Cursos/Periodos) + "Pendientes Hoy" + "Próximos" se actualizan automáticamente al crear/editar/borrar cursos o recordatorios. `ScheduleRepository` refactorizado a funciones puras de filtrado.
 - **Filtro automático por periodo activo en Home:** cursos de periodos cuyo rango de fechas no incluye "hoy" no aparecen; cursos sin periodo siempre visibles.
@@ -397,11 +408,7 @@ Estos temas se decidirán cuando lleguemos a su sprint:
 - Bottomsheet reutilizable `SessionEditorSheet` para crear/editar sesión.
 
 ### Lo que está roto / pendiente
-- Sin calificaciones (Grade) ni promedio ponderado — **Bloque E** (no iniciado).
-- La pantalla de Recordatorios requería **índice compuesto en Firestore** (`userId` + `createdAt`); creado desde el link del error `failed-precondition` el 2026-05-23. El Bloque E (`grade_repository`) probablemente necesitará otro índice similar.
-- Textos pendientes de traducir en login, register, bottom nav — **Bloque G**.
-- Labels UPPERCASE pendientes de convertir a Title Case en `create_period_screen.dart`, `create_course_screen.dart`, `login_screen.dart` — **Bloque G**.
-- Falta `AuthGate` que decida Login vs Home según estado de auth al iniciar app — Sprint 2.
+- La pantalla de Recordatorios y las Calificaciones requieren **índices compuestos en Firestore**: Recordatorios (`userId` + `createdAt`) y Calificaciones (`userId` + `courseId` + `createdAt`). Se crean desde el link del error `failed-precondition` la primera vez que falla la query.
 - Pantallas Profile y Share son placeholders vacíos — no entrar en la demo.
 
 ### Deuda técnica conocida

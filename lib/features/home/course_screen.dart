@@ -246,10 +246,7 @@ class _CourseTile extends StatelessWidget {
           ),
           IconButton(
             onPressed: onViewGrades,
-            icon: const Icon(
-              Icons.grade_outlined,
-              color: AppColors.purplePrimary,
-            ),
+            icon: const Icon(Icons.grading, color: AppColors.purplePrimary),
             tooltip: "Calificaciones",
           ),
           IconButton(

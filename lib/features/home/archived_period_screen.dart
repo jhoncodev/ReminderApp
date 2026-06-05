@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/data/period_repository.dart';
-import 'package:reminder_app/features/home/archived_period_screen.dart';
-import 'package:reminder_app/features/home/create_period_screen.dart';
 import 'package:reminder_app/models/period.dart';
 
-class PeriodScreen extends StatefulWidget {
-  const PeriodScreen({super.key});
+class ArchivedPeriodScreen extends StatefulWidget {
+  const ArchivedPeriodScreen({super.key});
 
   @override
-  State<PeriodScreen> createState() => _PeriodScreenState();
+  State<ArchivedPeriodScreen> createState() => _ArchivedPeriodScreenState();
 }
 
-class _PeriodScreenState extends State<PeriodScreen> {
+class _ArchivedPeriodScreenState extends State<ArchivedPeriodScreen> {
   final _repo = PeriodRepository();
 
   String _formatDate(DateTime date) {
@@ -21,17 +20,17 @@ class _PeriodScreenState extends State<PeriodScreen> {
     return "$m/$d/${date.year}";
   }
 
-  Future<void> _confirmArchive(Period period) async {
+  Future<void> _confirmUnarchive(Period period) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text(
-          "Archivar periodo",
+          "Restaurar periodo",
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          "¿Archivas \"${period.name}\"? Los cursos asociados se ocultarán.",
+          "¿Desarchivas \"${period.name}\"?",
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -45,7 +44,7 @@ class _PeriodScreenState extends State<PeriodScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
-              "Archivar",
+              "Restaurar",
               style: TextStyle(color: AppColors.purplePrimary),
             ),
           ),
@@ -56,115 +55,27 @@ class _PeriodScreenState extends State<PeriodScreen> {
     if (confirmed != true) return;
 
     try {
-      await _repo.archive(period);
+      await _repo.unarchive(period);
       if (!mounted) return;
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Periodo archivado")));
+      ).showSnackBar(const SnackBar(content: Text("Periodo restaurado")));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error al archivar: $e")));
+      ).showSnackBar(SnackBar(content: Text("Error al restaurar: $e")));
     }
-  }
-
-  Future<void> _confirmDelete(Period period) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text(
-          "Eliminar periodo",
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          "¿Seguro que deseas eliminar \"${period.name}\"? Esta acción no se puede deshacer.",
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              "Cancelar",
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              "Eliminar",
-              style: TextStyle(color: Colors.redAccent),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-    if (period.id == null) return;
-
-    try {
-      await _repo.delete(period.id!);
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Periodo eliminado")));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error al eliminar: $e")));
-    }
-  }
-
-  void _openCreate() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CreatePeriodScreen()),
-    );
-  }
-
-  void _openEdit(Period period) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => CreatePeriodScreen(period: period)),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: const Text(
-          "Periodos",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ArchivedPeriodScreen()),
-            ),
-            icon: const Icon(
-              Icons.archive_outlined,
-              color: AppColors.purplePrimary,
-            ),
-            tooltip: "Ver archivados",
-          ),
-        ],
-      ),
+      appBar: const DarkAppBar(title: "Periodos Archivados"),
       body: StreamBuilder<List<Period>>(
-        stream: _repo.watchAll(),
+        stream: _repo.watchArchived(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -177,7 +88,7 @@ class _PeriodScreenState extends State<PeriodScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  "Error al cargar periodos: ${snapshot.error}",
+                  "Error al cargar: ${snapshot.error}",
                   style: const TextStyle(color: Colors.white70),
                   textAlign: TextAlign.center,
                 ),
@@ -194,22 +105,13 @@ class _PeriodScreenState extends State<PeriodScreen> {
             padding: const EdgeInsets.all(20),
             itemCount: periods.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (_, index) => _PeriodTile(
+            itemBuilder: (_, index) => _ArchivedPeriodTile(
               period: periods[index],
               formatDate: _formatDate,
-              onEdit: () => _openEdit(periods[index]),
-              onDelete: () => _confirmDelete(periods[index]),
-              onArchive: () => _confirmArchive(periods[index]),
+              onUnarchive: () => _confirmUnarchive(periods[index]),
             ),
           );
         },
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.purplePrimary,
-        foregroundColor: Colors.white,
-        onPressed: _openCreate,
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -227,14 +129,13 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.calendar_month,
+              Icons.archive_outlined,
               color: AppColors.purplePrimary,
               size: 64,
             ),
             SizedBox(height: 16),
-
             Text(
-              "Aún no tienes periodos",
+              "Sin periodos archivados",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -242,9 +143,8 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
             SizedBox(height: 8),
-
             Text(
-              "Toca el botón + para crear tu primer periodo académico.",
+              "Los periodos que archives aparecerán aquí.",
               style: TextStyle(color: AppColors.hint, fontSize: 14),
               textAlign: TextAlign.center,
             ),
@@ -255,19 +155,15 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _PeriodTile extends StatelessWidget {
+class _ArchivedPeriodTile extends StatelessWidget {
   final Period period;
   final String Function(DateTime) formatDate;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onArchive;
+  final VoidCallback onUnarchive;
 
-  const _PeriodTile({
+  const _ArchivedPeriodTile({
     required this.period,
     required this.formatDate,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onArchive,
+    required this.onUnarchive,
   });
 
   @override
@@ -293,7 +189,6 @@ class _PeriodTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-
                 Text(
                   "${formatDate(period.startDate)} - ${formatDate(period.endDate)}",
                   style: const TextStyle(color: AppColors.hint, fontSize: 12),
@@ -302,25 +197,12 @@ class _PeriodTile extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: onEdit,
+            onPressed: onUnarchive,
             icon: const Icon(
-              Icons.edit_outlined,
+              Icons.unarchive_outlined,
               color: AppColors.purplePrimary,
             ),
-            tooltip: "Editar",
-          ),
-          IconButton(
-            onPressed: onArchive,
-            icon: const Icon(
-              Icons.archive_outlined,
-              color: Colors.orangeAccent,
-            ),
-            tooltip: "Archivar",
-          ),
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-            tooltip: "Eliminar",
+            tooltip: "Restaurar",
           ),
         ],
       ),

@@ -240,7 +240,7 @@ class _CreateGradeScreenState extends State<CreateGradeScreen> {
               keyboardType: TextInputType.number,
               onChanged: (_) => _checkWeightValidation(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             if (_validationMessage.isNotEmpty)
               Container(
                 padding: const EdgeInsets.all(12),

@@ -3,18 +3,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class User{
   final String? id;
   final String name;
-  final String email;
+  final String? email;
   final String? avatarIcon;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
   User({
     this.id,
     required this.name,
-    required this.email,
+    this.email,
     this.avatarIcon,
-    required this.createdAt,
-    required this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
   });
+
+  
+  
+  
 
   factory User.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
@@ -24,7 +28,7 @@ class User{
     return User(
       id: snapshot.id, 
       name: data['name'] as String,
-      email: data['email'] as String,
+      email: data['email'] as String?,
       avatarIcon: data['avatarIcon'] as String?,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate()
@@ -36,8 +40,8 @@ class User{
       'name': name,
       'email': email,
       if (avatarIcon != null) 'avatarIcon':avatarIcon,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt)
+      'createdAt': Timestamp.fromDate(createdAt ?? DateTime.now()),
+      'updatedAt': Timestamp.fromDate(updatedAt ?? DateTime.now()),
     };
   }
 

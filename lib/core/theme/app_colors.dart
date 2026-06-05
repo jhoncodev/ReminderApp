@@ -26,6 +26,8 @@ class AppColors {
   //  Accents for cards/categories
   static const Color cyan = Color(0xFF4EE6D3);
   static const Color orange = Color(0xFFFFB054);
+  static const Color pink = Color(0xFFFF6B6B);
+  static const Color green = Color(0xFF6BCB77);
 
   // Button main gradient
   static const LinearGradient primaryGradient = LinearGradient(

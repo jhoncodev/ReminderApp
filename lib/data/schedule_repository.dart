@@ -102,7 +102,7 @@ class ScheduleRepository {
             title: c.name, 
             subtitle: s.roomName != null ? 'Curso • ${s.roomName}' : 'Curso', 
             time: s.startTime, 
-            accentColor: AppColors.purpleLight, 
+            accentColor: Color(c.colorCode), 
             icon: Icons.school_outlined, 
             type: ScheduleItemType.course,
           )

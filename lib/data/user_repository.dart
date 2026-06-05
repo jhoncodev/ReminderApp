@@ -1,17 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:reminder_app/models/user.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:reminder_app/models/user.dart' as app_user;
 
 class UserRepository {
   // This class can be used to manage user-related data operations, such as fetching user details, updating profiles, etc.
-  // For now, it's just a placeholder for future user-related functionalities.  
-  final CollectionReference<User> _usersRef = FirebaseFirestore.instance
-  .collection('users')
-  .withConverter(
-    fromFirestore: User.fromFirestore, 
-    toFirestore: (user, _) => user.toFirestore(),
-  );
+  // For now, it's just a placeholder for future user-related functionalities.
 
-  Future<User?> getCurrentUser(String userId) async {
+  String get _currentUserId {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('No hay usuario autenticado');
+    }
+    return user.uid;
+  }
+
+  final CollectionReference<app_user.User> _usersRef = FirebaseFirestore
+      .instance
+      .collection('users')
+      .withConverter(
+        fromFirestore: app_user.User.fromFirestore,
+        toFirestore: (user, _) => user.toFirestore(),
+      );
+
+  Future<app_user.User?> getCurrentUser(String userId) async {
     try {
       final snapshot = await _usersRef.doc(userId).get();
       if (snapshot.exists) {
@@ -23,4 +34,10 @@ class UserRepository {
     }
   }
 
+  Future<void> updateUser(app_user.User user) async {
+    if (_currentUserId == null) {
+      throw Exception('User ID is required for updating user data');
+    }
+    await _usersRef.doc(_currentUserId).set(user);
+  }
 }

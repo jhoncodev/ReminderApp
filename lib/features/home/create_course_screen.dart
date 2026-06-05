@@ -4,6 +4,7 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
+import 'package:reminder_app/core/widgets/color_selector.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/core/widgets/session_editor_sheet.dart';
@@ -28,6 +29,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   final _periodRepo = PeriodRepository();
   final nameController = TextEditingController();
   final noteController = TextEditingController();
+  int _selectedColor = 0xFF6C63FF;
 
   bool isAcademicPeriodEnabled = false;
   Period? selectedPeriod;
@@ -131,6 +133,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           name: name,
           sessions: _sessions,
           note: note,
+          colorCode: _selectedColor,
           createdAt: original.createdAt,
           updatedAt: now,
         );
@@ -143,6 +146,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           name: name,
           sessions: _sessions,
           note: note,
+          colorCode: _selectedColor,
           createdAt: now,
           updatedAt: now,
         );
@@ -281,6 +285,16 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               const SizedBox(height: 24),
 
               _buildNoteSection(),
+              const SizedBox(height: 24),
+
+              ColorSelector(
+                selectedColor: _selectedColor,
+                onColorSelected: (newColor) {
+                  setState(() {
+                    _selectedColor = newColor;
+                  });
+                },
+              ),
               const SizedBox(height: 40),
 
               PrimaryGradientButton(

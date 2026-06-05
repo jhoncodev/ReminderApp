@@ -7,6 +7,7 @@ import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/features/auth/register_screen.dart';
 import 'package:reminder_app/features/home/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:reminder_app/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,6 +27,34 @@ class _LoginScreenState extends State<LoginScreen> {
     passwordController.dispose();
     super.dispose();
   }
+
+  Future<void> _loginWithGoogle() async {
+  setState(() => _isLoading = true);
+  try {
+    // Call the AuthService class we created in the previous steps
+    final authService = AuthService(); 
+    final userCredential = await authService.signInWithGoogle();
+    
+    // If successful and the user didn't cancel the prompt
+    if (userCredential != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicio de sesión con Google exitoso')),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
+  }
+}
 
   Future<void> _loginUser() async {
     setState(() => _isLoading = true);
@@ -166,6 +195,42 @@ class _LoginScreenState extends State<LoginScreen> {
                 text: "Iniciar Sesión",
                 onPressed: _isLoading ? null : _loginUser,
                 glow: true,
+              ),
+              const SizedBox(height: 40),
+              const Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.white24, thickness: 1)),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      "O",
+                      style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Colors.white24, thickness: 1)),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              OutlinedButton.icon(
+                // Note: Ensure you have a Google icon in your assets, or use a standard Flutter icon
+                icon: const Icon(Icons.g_mobiledata, color: Colors.white, size: 32), 
+                label: const Text(
+                  'Continuar con Google',
+                  style: TextStyle(
+                    color: Colors.white, 
+                    fontSize: 16, 
+                    fontWeight: FontWeight.w600
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white24, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: _isLoading ? null : _loginWithGoogle,
               ),
               const SizedBox(height: 40),
 

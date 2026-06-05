@@ -8,6 +8,7 @@ class Course {
   final String name;
   final List<CourseSession> sessions;
   final String? note;
+  final int colorCode; // Hex color code as a string, e.g. "#FF6C63FF"
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -18,6 +19,7 @@ class Course {
     required this.name,
     required this.sessions,
     this.note,
+    required this.colorCode,
     required this.createdAt,
     required this.updatedAt
   });
@@ -27,7 +29,7 @@ class Course {
   factory Course.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
     SnapshotOptions? options,
-  ){
+  ) {
     final data = snapshot.data()!;
     return Course(
       id: snapshot.id,
@@ -35,12 +37,13 @@ class Course {
       academicPeriodId: data['academicPeriodId'] as String?,
       name: data['name'] as String,
       sessions: (data['sessions'] as List<dynamic>? ?? [])
-        .map((e) => CourseSession.fromMap(e as Map<String, dynamic>))
-        .toList(),
+          .map((e) => CourseSession.fromMap(e as Map<String, dynamic>))
+          .toList(),
       note: data['note'] as String?,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate()
-
+      colorCode: data['colorCode'] as int? ?? 0xFF6C63FF,
+      // THE FIX: Use 'Timestamp?' to allow nulls, then fallback to DateTime.now() if it's missing
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -53,6 +56,7 @@ class Course {
       'name': name,
       'sessions': sessions.map((s) => s.toMap()).toList(),
       if (note != null) 'note': note,
+      'colorCode': colorCode,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt)
     };

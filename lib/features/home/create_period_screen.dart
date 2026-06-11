@@ -8,6 +8,7 @@ import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/core/widgets/app_date_picker_field.dart';
+import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/models/period.dart';
 
@@ -46,6 +47,51 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
     startDateController.dispose();
     endDateController.dispose();
     super.dispose();
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  Future<bool?> _confirmDateChange(int linkedCourses) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Cambio de fechas",
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Este periodo tiene $linkedCourses curso${linkedCourses == 1 ? '' : 's'}, cambiar las fechas puede ocultarlo${linkedCourses == 1 ? '' : 's'} del inicio y del horario. ¿Continuar?",
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              "Cancelar",
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              "Continuar",
+              style: TextStyle(color: Colors.orangeAccent),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   DateTime? _parseDate(String input) {
@@ -90,6 +136,25 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
     if (user == null) {
       showErrorSnack(context, "No hay usuario autenticado");
       return;
+    }
+
+    // Advertencia (no bloqueo) si el periodo tiene cursos y se cambian las fechas:
+    // el filtro automático del Home/Horario podría ocultar esos cursos
+    if (widget.isEditing) {
+      final original = widget.period!;
+      final datesChanged = !_isSameDay(startDate, original.startDate) ||
+          !_isSameDay(endDate, original.endDate);
+
+      if (datesChanged) {
+        final linkedCourses = (await CourseRepository().watchAll().first)
+            .where((c) => c.academicPeriodId == original.id)
+            .length;
+        if (!mounted) return;
+        if (linkedCourses > 0) {
+          final proceed = await _confirmDateChange(linkedCourses);
+          if (proceed != true) return;
+        }
+      }
     }
 
     setState(() => _isSaving = true);

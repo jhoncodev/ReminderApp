@@ -136,6 +136,14 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         ? null
         : noteController.text.trim();
 
+    // Advertencia (no bloqueo) si hay cruce de horario con otro curso del mismo periodo
+    final conflict = await _findScheduleConflict(periodId);
+    if (!mounted) return;
+    if (conflict != null) {
+      final proceed = await _confirmConflict(conflict);
+      if (proceed != true) return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -183,6 +191,80 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  int _toMinutes(String time24h) {
+    final t = parse24h(time24h);
+    return t.hour * 60 + t.minute;
+  }
+
+  // Busca el primer cruce de horario contra los demás cursos del MISMO periodo.
+  // Dos rangos chocan si: inicioA < finB && inicioB < finA.
+  // Devuelve la descripción del conflicto, o null si no hay.
+  Future<String?> _findScheduleConflict(String? periodId) async {
+    // .first toma la foto actual del stream (sirve del cache estando offline)
+    final courses = await _courseRepo.watchAll().first;
+
+    for (final other in courses) {
+      if (other.id == widget.course?.id) continue; // yo mismo (al editar)
+      if (other.academicPeriodId != periodId) continue;
+
+      for (final s in _sessions) {
+        for (final o in other.sessions) {
+          if (o.dayOfWeek != s.dayOfWeek) continue;
+          final sStart = _toMinutes(s.startTime);
+          final sEnd = _toMinutes(s.endTime);
+          final oStart = _toMinutes(o.startTime);
+          final oEnd = _toMinutes(o.endTime);
+          if (sStart < oEnd && oStart < sEnd) {
+            return 'El ${_dayNames[s.dayOfWeek]} se cruza con "${other.name}" '
+                '(${formatTo12h(o.startTime)} - ${formatTo12h(o.endTime)})';
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<bool?> _confirmConflict(String message) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Conflicto de horario",
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "$message.\n\n¿Guardar de todas formas?",
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              "Cancelar",
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              "Guardar Igual",
+              style: TextStyle(color: Colors.orangeAccent),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openPeriodSelector() async {

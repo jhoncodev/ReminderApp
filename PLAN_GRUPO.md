@@ -237,10 +237,11 @@ class Classroom {
 
 - [x] **Entidad `Teacher`** (2026-06-11): modelo (`name` + `email?` + `phone?`) + `TeacherRepository` (sin orderBy en query — ordena por nombre en cliente para NO necesitar índice compuesto) + pantallas de gestión (`teacher_screen.dart` / `create_teacher_screen.dart`, acceso desde el FAB del Home). Vínculo `teacherId` opcional en Course con toggle+selector en el formulario (mismo patrón que periodo). Nombre del profesor visible en el tile del curso y en el detalle de sesión del Horario. Eliminar un profesor deja los cursos "sin profesor" (el vínculo huérfano simplemente no se muestra). Bonus fix: editar un curso ya no resetea su color (faltaba prellenar `_selectedColor`).
 
-**Pendiente (roadmap final decidido el 2026-06-11):**
-2. **Paquete "validaciones al guardar"** (independientes pero se hacen juntas):
-   - Detección de conflictos de horario al crear/editar curso (comparar rangos de horas por día contra los demás cursos del mismo periodo; advertencia, no bloqueo).
-   - Validación al editar fechas de un periodo con cursos: advertencia "Este periodo tiene N cursos; cambiar las fechas puede ocultarlos del inicio. ¿Continuar?".
+- [x] **Paquete "validaciones al guardar"** (2026-06-11):
+   - Detección de conflictos de horario al guardar curso: compara rangos por día contra los demás cursos del MISMO periodo (`inicioA < finB && inicioB < finA`); diálogo de advertencia con "Guardar Igual" (no bloquea). Usa `watchAll().first` (sirve del cache offline).
+   - Al editar fechas de un periodo con cursos vinculados: diálogo "Este periodo tiene N cursos; cambiar las fechas puede ocultarlos... ¿Continuar?". Solo si las fechas realmente cambiaron.
+
+**Pendiente (roadmap final):**
 3. **Notificaciones locales** (`flutter_local_notifications`): el ícono de campana del Home abre un modal de configuración con avisos configurables ("15 min antes" + agregar más: 10, 5...) que aplican a cursos y recordatorios con hora. Es la feature más laboriosa: permisos Android 13+, programación recurrente y reprogramación al cambiar datos.
 4. **Recordatorio por voz (versión simple):** plugin `speech_to_text` (reconocimiento del sistema, gratis, sin backend, es compatible con español y offline) — botón de micrófono que dicta el NOMBRE del recordatorio; fecha/hora se eligen con los pickers normales. Whisper/LLM descartados por costo y complejidad.
 

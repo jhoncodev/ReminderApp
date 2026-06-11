@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/avatar_selector.dart';
@@ -47,13 +48,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _userEmail = currentUser.email ?? 'Sin correo';
       });
 
-      // Pass the real Firebase UID here
       final user = await _userRepository.getCurrentUser(currentUser.uid);
 
       if (user != null && mounted) {
         setState(() {
           nameController.text = user.name;
-          // Important: Actually load the saved avatar!
+          // Cargar el avatar guardado
           _selectedAvatar =
               (user.avatarIcon != null && user.avatarIcon!.isNotEmpty)
               ? user.avatarIcon!
@@ -61,7 +61,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Error loading user data: $e");
+      if(!mounted) return;
+        showErrorSnack(context,"Error al cargar los datos del usuario");
+        debugPrint("Error al cargar los datos del usuario: $e");
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -74,45 +76,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (currentUser == null) return;
 
     if (nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El nombre no puede estar vacío')),
-      );
+      showErrorSnack(context, "El nombre no puede estar vacío");
       return;
     }
 
     setState(() => _isSaving = true);
 
     try {
-      // Assuming your User model requires an ID or you update via standard repo logic
       final updatedUser = User(
         id: currentUser.uid,
         name: nameController.text.trim(),
         avatarIcon: _selectedAvatar,
-        // add other required User fields if necessary
       );
 
       await _userRepository.updateUser(updatedUser);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Perfil actualizado con éxito!')),
-        );
+        showSuccessSnack(context, "Perfil actualizado con éxito!");
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error al actualizar: $e')));
+        showErrorSnack(context, "Error al actualizar el perfil");
+        debugPrint("Error al actualizar el perfil: $e");
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  Future<void> _signOut() async {
-    await auth.FirebaseAuth.instance.signOut();
-    // Usually, you might want to navigate to the LoginScreen here
-    // depending on how your AuthGate handles state changes.
   }
 
   Future<void> _openAvatarPicker() async {
@@ -161,16 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: DarkAppBar(
-        title: 'Mi Perfil',
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.logout, color: Colors.redAccent),
-        //     onPressed: _signOut,
-        //     tooltip: 'Cerrar Sesión',
-        //   ),
-        // ],
-      ),
+      appBar: DarkAppBar(title: 'Mi Perfil'),
       bottomNavigationBar: const BottomNavBar(currentRoute: '/profile'),
       body: SafeArea(
         child: _isLoading
@@ -234,7 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Email Display (Read-Only)
+                    // Correo (solo lectura)
                     const AppLabel(text: "Correo Electrónico"),
                     const SizedBox(height: 8),
                     Container(
@@ -257,8 +237,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Username Input
-                    const AppLabel(text: "Nombre de Usuario"), // Fixed Label
+                    // Campo de nombre
+                    const AppLabel(text: "Nombre de Usuario"),
                     const SizedBox(height: 8),
                     AppTextField(
                       controller: nameController,

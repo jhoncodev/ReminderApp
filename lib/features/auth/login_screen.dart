@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_password_field.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
@@ -31,26 +32,23 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithGoogle() async {
   setState(() => _isLoading = true);
   try {
-    // Call the AuthService class we created in the previous steps
+    // Servicio de autenticación con Google
     final authService = AuthService(); 
     final userCredential = await authService.signInWithGoogle();
     
-    // If successful and the user didn't cancel the prompt
+    // Si fue exitoso y el usuario no canceló el prompt
     if (userCredential != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inicio de sesión con Google exitoso')),
-      );
+      showSuccessSnack(context, "Inicio de sesión con Google exitoso");
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     }
   } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
+    debugPrint("Error en Google Sign-In: $e");
+    if(!mounted) return;
+      final message = e is FirebaseAuthException ? authErrorMessage(e) : "No se pudo iniciar sesión con Google";
+      showErrorSnack(context, message);
   } finally {
     if (mounted) setState(() => _isLoading = false);
   }
@@ -59,43 +57,27 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginUser() async {
     setState(() => _isLoading = true);
     try {
-      // 1. Authenticate the user with Firebase
+      // 1. Autenticar al usuario con Firebase
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Inicio de sesión exitoso')),
-        );
+        showSuccessSnack(context, "Inicio de sesión exitoso");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } on FirebaseAuthException catch (e) {
-      // Handle specific Firebase login errors
-      String errorMessage =
-          e.message ?? 'Ocurrió un error durante el inicio de sesión';
-      if (e.code == 'user-not-found') {
-        errorMessage = 'No se encontró usuario con ese correo';
-      } else if (e.code == 'wrong-password') {
-        errorMessage = 'Contraseña incorrecta';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'El correo electrónico está mal formateado';
-      }
+      debugPrint("Error de login: ${e.code}");
 
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
-      }
+      if(!mounted) return;
+        showErrorSnack(context, authErrorMessage(e));
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-      }
+      debugPrint("error de login: $e");
+      if(!mounted) return;
+        showErrorSnack(context, "Ocurrió un error, intenta de nuevo");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -104,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background, // Deep dark background
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
@@ -113,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 40),
 
-              // 1. Logo Icon
+              // 1. Logo
               Center(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
@@ -127,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 2. Title & Subtitle
+              // 2. Título y subtítulo
               const Text(
                 'Reminder App',
                 textAlign: TextAlign.center,
@@ -151,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 48),
 
-              // 3. Email Input
+              // 3. Campo de correo
               const AppLabel(text: "Correo Electrónico"),
               const SizedBox(height: 8),
               AppTextField(
@@ -160,18 +142,18 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 4. Password Input
+              // 4. Campo de contraseña
               const AppLabel(text: "Contraseña"),
               const SizedBox(height: 8),
               AppPasswordField(controller: passwordController),
               const SizedBox(height: 12),
 
-              // 5. Forgot Password Link
+              // 5. Link de recuperar contraseña
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    // TODO: Implement forgot password logic
+                    // TODO: implementar recuperar contraseña
                   },
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
@@ -181,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: const Text(
                     '¿Olvidaste tu contraseña?',
                     style: TextStyle(
-                      color: Color(0xFFDAB6FF), // Light purple text
+                      color: Color(0xFFDAB6FF), // Texto morado claro
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -190,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 6. Gradient Login Button
+              // 6. Botón de iniciar sesión
               PrimaryGradientButton(
                 text: "Iniciar Sesión",
                 onPressed: _isLoading ? null : _loginUser,
@@ -213,8 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
 
               OutlinedButton.icon(
-                // Note: Ensure you have a Google icon in your assets, or use a standard Flutter icon
-                icon: const Icon(Icons.g_mobiledata, color: Colors.white, size: 32), 
+                icon: const Icon(Icons.g_mobiledata, color: Colors.white, size: 32),
                 label: const Text(
                   'Continuar con Google',
                   style: TextStyle(
@@ -234,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // 7. Register Footer
+              // 7. Footer de registro
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

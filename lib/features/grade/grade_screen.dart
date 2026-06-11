@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
+import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/grade_repository.dart';
 import 'package:reminder_app/models/grade.dart';
 import 'package:reminder_app/features/grade/create_grade_screen.dart';
@@ -45,15 +47,13 @@ class _GradeScreenState extends State<GradeScreen> {
         stream: _gradeRepository.watchByCourse(widget.courseId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const AppLoadingView();
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red),
-              ),
+           return AppErrorView(
+            message: "No se pudieron cargar las calificaciones",
+            error: snapshot.error,
             );
           }
 
@@ -98,7 +98,7 @@ class _GradeScreenState extends State<GradeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F0F0F),
         border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+          bottom: BorderSide(color: Colors.white.withValues(alpha:0.1), width: 1),
         ),
       ),
       child: Column(
@@ -153,8 +153,8 @@ class _GradeScreenState extends State<GradeScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: isValid
-                      ? Colors.green.withOpacity(0.2)
-                      : Colors.red.withOpacity(0.2),
+                      ? Colors.green.withValues(alpha:0.2)
+                      : Colors.red.withValues(alpha:0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -181,13 +181,13 @@ class _GradeScreenState extends State<GradeScreen> {
           Icon(
             Icons.grade_outlined,
             size: 64,
-            color: Colors.white.withOpacity(0.3),
+            color: Colors.white.withValues(alpha:0.3),
           ),
           const SizedBox(height: 16),
           Text(
             'Sin calificaciones',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha:0.7),
               fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
@@ -196,7 +196,7 @@ class _GradeScreenState extends State<GradeScreen> {
           Text(
             'Agrega tu primera calificación',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha:0.5),
               fontSize: 14,
             ),
           ),
@@ -223,7 +223,7 @@ class _GradeScreenState extends State<GradeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F0F0F),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(color: Colors.white.withValues(alpha:0.1), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +281,7 @@ class _GradeScreenState extends State<GradeScreen> {
                   Text(
                     'Calificación',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha:0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -301,7 +301,7 @@ class _GradeScreenState extends State<GradeScreen> {
                   Text(
                     'Porcentaje',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha:0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -321,7 +321,7 @@ class _GradeScreenState extends State<GradeScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.purplePrimary.withOpacity(0.2),
+                  color: AppColors.purplePrimary.withValues(alpha:0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -381,15 +381,12 @@ class _GradeScreenState extends State<GradeScreen> {
       try {
         await _gradeRepository.delete(gradeId);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Calificación eliminada')),
-          );
+          showSuccessSnack(context, "Calificación eliminada");
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+          showErrorSnack(context, "Error al eliminar la calificación");
+          debugPrint("No se pudo elimianr la calificación: $e");
         }
       }
     }

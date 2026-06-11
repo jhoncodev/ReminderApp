@@ -6,20 +6,20 @@ class NoteRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Helper to securely grab the current logged-in user's ID
+  // Devuelve el uid del usuario con sesión iniciada (null si no hay sesión)
   String? get _currentUserId => _auth.currentUser?.uid;
 
-  // Reference to the 'notes' collection in Firestore
+  // Referencia a la colección 'notes' en Firestore
   CollectionReference get _notesCollection => _firestore.collection('notes');
 
   // ==========================================
-  // CREATE
+  // CREAR
   // ==========================================
 Future<void> addNote({
     required String title,
     required String content,
     String? courseId,
-    int colorCode = 0xFF6C63FF, // Default color if not provided
+    int colorCode = 0xFF6C63FF, // Color por defecto si no se indica
   }) async {
     final userId = _currentUserId;
     if (userId == null) throw Exception('User must be logged in to create a note');
@@ -30,7 +30,7 @@ Future<void> addNote({
       courseId: courseId, 
       title: title,
       content: content,
-      colorCode: colorCode, // Save the color!
+      colorCode: colorCode,
       createdAt: DateTime.now(),
     );
 
@@ -38,18 +38,17 @@ Future<void> addNote({
   }
 
   // ==========================================
-  // READ (All Notes)
+  // LEER (todos los apuntes)
   // ==========================================
   Stream<List<Note>> getUserNotes() {
     final userId = _currentUserId;
-    if (userId == null) return Stream.value([]); // Return empty stream if logged out
+    if (userId == null) return Stream.value([]); // Stream vacío si no hay sesión
 
     return _notesCollection
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          print('Fetched ${snapshot.docs.length} notes for user $userId');
       return snapshot.docs
           .map((doc) => Note.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
           .toList();
@@ -57,7 +56,7 @@ Future<void> addNote({
   }
 
   // ==========================================
-  // READ (Course-Specific Notes)
+  // LEER (apuntes de un curso)
   // ==========================================
   Stream<List<Note>> getNotesForCourse(String courseId) {
     final userId = _currentUserId;
@@ -65,7 +64,7 @@ Future<void> addNote({
 
     return _notesCollection
         .where('userId', isEqualTo: userId)
-        .where('courseId', isEqualTo: courseId) // Filters out free notes
+        .where('courseId', isEqualTo: courseId) // Excluye los apuntes libres (sin curso)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -76,7 +75,7 @@ Future<void> addNote({
   }
 
   // ==========================================
-  // UPDATE
+  // ACTUALIZAR
   // ==========================================
   Future<void> updateNote(Note note) async {
     if (_currentUserId == null || note.userId != _currentUserId) {
@@ -87,7 +86,7 @@ Future<void> addNote({
   }
 
   // ==========================================
-  // DELETE
+  // ELIMINAR
   // ==========================================
   Future<void> deleteNote(String noteId) async {
     if (_currentUserId == null) throw Exception('User must be logged in');

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/models/course.dart';
@@ -18,18 +19,18 @@ class ScheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
-  // ── constants ──────────────────────────────────────────────────────────────
-  static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // ── constantes ──────────────────────────────────────────────────────────────
+  static const _days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   static const _startHour = 7;
   static const _endHour = 24;
   static const _totalHours = _endHour - _startHour;
 
-  static const double _hourHeight = 80.0; // Increased for the new grid look
+  static const double _hourHeight = 80.0; // Alto de cada hora en el grid
   static const double _timeColWidth = 65.0;
   static const double _dayColWidth = 100.0;
 
-  // ── state ──────────────────────────────────────────────────────────────────
+  // ── estado ──────────────────────────────────────────────────────────────────
   List<Course> _courses = [];
   bool _loading = true;
   late DateTime _startOfWeek;
@@ -37,7 +38,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<Period> _periods = [];
   String? _selectedPeriodId;
 
-  // ── lifecycle ──────────────────────────────────────────────────────────────
+  // ── ciclo de vida ──────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -54,40 +55,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
  Future<void> _loadCourses() async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      
-      // 1. Check if we actually have a logged-in user
-      print("🔍 DEBUG: Current UID is: $uid");
-
+    
       if (uid == null) {
-        print("🚨 DEBUG: UID is null! The user is NOT logged in. Bailing out.");
         setState(() => _loading = false);
         return;
       }
-
-      print("⏳ DEBUG: User is logged in. Fetching courses from Firestore...");
 
       final snap = await FirebaseFirestore.instance
           .collection('courses')
           .where('userId', isEqualTo: uid)
           .get();
 
-      // 2. Did we get the data?
-      print("✅ DEBUG: Success! Loaded ${snap.docs.length} courses for user $uid");
-
+      // 2. ¿Llegaron los datos?
       setState(() {
         _courses = snap.docs.map((d) => Course.fromFirestore(d, null)).toList();
-        for (var course in _courses) {
-          print("📚 Course Name: ${course.name}");
-          print("   Total Sessions: ${course.sessions.length}");
-          for (var session in course.sessions) {
-             print("   -> Day: ${session.dayOfWeek} | Start: ${session.startTime} | End: ${session.endTime}");
-          }
-        }
         _loading = false;
       });
 
     } catch (e) {
-      // 3. Did Firebase throw a fit? (e.g., Security Rules, Missing Index)
+      // 3. ¿Falló Firebase? (reglas de seguridad, índice faltante)
       debugPrint("❌ DEBUG: Caught an error while fetching: $e");
       setState(() => _loading = false); 
     }
@@ -97,9 +83,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     try {
       final periods = await _periodRepository.getAll();
       if (!mounted) return;
-      setState(() => _periods = periods);
+        setState(() => _periods = periods);
     } catch (e) {
-      debugPrint('Error cargando periodos: $e');
+      showErrorSnack(context, "Error al cargar los periodos");
+      debugPrint('Error al cargar los periodos: $e');
     }
   }
 
@@ -159,7 +146,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0F), // Original dark background
+      backgroundColor: const Color(0xFF0D0D0F), // Fondo oscuro (hardcoded, deuda técnica)
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +169,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Widget _buildTopBar() {
     final endOfWeek = _startOfWeek.add(const Duration(days: 6));
-    final monthFormat = DateFormat('MMMM');
+    final monthFormat = DateFormat('MMMM', 'es');
     final title = '${monthFormat.format(_startOfWeek)} ${_startOfWeek.day} - ${endOfWeek.day}, ${endOfWeek.year}';
 
     return Padding(
@@ -263,7 +250,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return Container(
       margin: const EdgeInsets.only(left: _timeColWidth),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E), // Slightly lighter dark card for header
+        color: const Color(0xFF1C1C1E), // Card un poco más clara para el header
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -343,7 +330,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       height: _totalHours * _hourHeight,
       child: Stack(
         children: [
-          // Subtle horizontal grid lines adapted for dark mode
+          // Líneas horizontales sutiles del grid
           for (int h = 0; h <= _totalHours; h++)
             Positioned(
               top: h * _hourHeight,
@@ -351,7 +338,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               right: 0,
               child: Container(
                 height: 1,
-                color: Colors.white.withOpacity(0.05), 
+                color: Colors.white.withValues(alpha:0.05), 
               ),
             ),
           
@@ -375,8 +362,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         onTap: () => _showSessionDetail(entry, color),
         child: Container(
           decoration: BoxDecoration(
-            color: color.withOpacity(0.18), // Original opacity background
-            border: Border(left: BorderSide(color: color, width: 4)), // New left border style
+            color: color.withValues(alpha:0.18), // Fondo translúcido del color del curso
+            border: Border(left: BorderSide(color: color, width: 4)), // Borde izquierdo del color del curso
             borderRadius: BorderRadius.circular(4),
           ),
           padding: const EdgeInsets.all(8),
@@ -408,7 +395,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 Text(
                   '${entry.session.startTime} - ${entry.session.endTime}',
                   style: TextStyle(
-                    color: color.withOpacity(0.8),
+                    color: color.withValues(alpha:0.8),
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                   ),
@@ -502,7 +489,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void _showSessionDetail(_SessionEntry entry, Color color) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C1C1E), // Original dark modal
+      backgroundColor: const Color(0xFF1C1C1E), // Modal oscuro
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),

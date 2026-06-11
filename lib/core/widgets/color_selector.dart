@@ -5,22 +5,22 @@ class ColorSelector extends StatelessWidget {
   final Function(int) onColorSelected;
 
   const ColorSelector({
-    Key? key,
+    super.key,
     required this.selectedColor,
     required this.onColorSelected,
-  }) : super(key: key);
+  });
 
-  // A curated list of beautiful, modern colors for courses
+  // Lista curada de colores modernos para cursos
   static const List<int> courseColors = [
-    0xFF6C63FF, // Default Purple (Matches your app's primary accent)
-    0xFFFF6B6B, // Coral Red
-    0xFF4ECDC4, // Mint/Teal
-    0xFFFFD166, // Yellow
-    0xFF06D6A0, // Neon Green
-    0xFF118AB2, // Light Blue
-    0xFF073B4C, // Dark Navy
-    0xFF9D4EDD, // Deep Violet
-    0xFFFF9F1C, // Bright Orange
+    0xFF6C63FF, // Morado por defecto
+    0xFFFF6B6B, // Rojo coral
+    0xFF4ECDC4, // Menta
+    0xFFFFD166, // Amarillo
+    0xFF06D6A0, // Verde neón
+    0xFF118AB2, // Celeste
+    0xFF073B4C, // Azul marino oscuro
+    0xFF9D4EDD, // Violeta profundo
+    0xFFFF9F1C, // Naranja brillante
   ];
 
   @override
@@ -34,7 +34,7 @@ class ColorSelector extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 50, // Fixed height for the horizontal list
+          height: 50, // Alto fijo de la lista horizontal
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: courseColors.length,
@@ -51,7 +51,7 @@ class ColorSelector extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Color(colorValue),
                     shape: BoxShape.circle,
-                    // Add a white border if selected
+                    // Borde blanco si está seleccionado
                     border: isSelected 
                         ? Border.all(color: Colors.white, width: 2.5) 
                         : null,

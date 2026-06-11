@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/reminder_repository.dart';
 import 'package:reminder_app/features/home/create_reminder_screen.dart';
 import 'package:reminder_app/models/reminder.dart';
@@ -60,14 +62,11 @@ class _ReminderScreenState extends State<ReminderScreen> {
     try {
       await _repo.delete(reminder.id!);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Recordatorio eliminado")));
+        showSuccessSnack(context, "Recordatorio eliminado");
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error al eliminar: $e")));
+        showErrorSnack(context, "Error al eliminar el recordatorio");
+        debugPrint("Error al eliminar el recordatorio: $e");
     }
   }
 
@@ -96,21 +95,13 @@ class _ReminderScreenState extends State<ReminderScreen> {
         stream: _repo.watchAll(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.purplePrimary),
-            );
+            return const AppLoadingView();
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  "Error al cargar recordatorios: ${snapshot.error}",
-                  style: const TextStyle(color: Colors.white70),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            return AppErrorView(
+              message: "No se pudieron cargar los recordatorios",
+              error: snapshot.error,  
             );
           }
 

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
+import 'package:reminder_app/core/utils/date_helpers.dart';
+import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/features/home/archived_period_screen.dart';
 import 'package:reminder_app/features/home/create_period_screen.dart';
@@ -14,12 +17,6 @@ class PeriodScreen extends StatefulWidget {
 
 class _PeriodScreenState extends State<PeriodScreen> {
   final _repo = PeriodRepository();
-
-  String _formatDate(DateTime date) {
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return "$m/$d/${date.year}";
-  }
 
   Future<void> _confirmArchive(Period period) async {
     final confirmed = await showDialog<bool>(
@@ -58,15 +55,11 @@ class _PeriodScreenState extends State<PeriodScreen> {
     try {
       await _repo.archive(period);
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Periodo archivado")));
+        showSuccessSnack(context, "Periodo archivado");
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error al archivar: $e")));
+        showErrorSnack(context, "Error al archivar el periodo");
+        debugPrint("Error al archivar el periodo: $e");
     }
   }
 
@@ -108,15 +101,11 @@ class _PeriodScreenState extends State<PeriodScreen> {
     try {
       await _repo.delete(period.id!);
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Periodo eliminado")));
+        showSuccessSnack(context, "Periodo eliminado");
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error al eliminar: $e")));
+        showErrorSnack(context, "Error al eliminar el periodo");
+        debugPrint("Error al eliminar el periodo: $e");
     }
   }
 
@@ -141,6 +130,10 @@ class _PeriodScreenState extends State<PeriodScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context), 
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+        ),
         title: const Text(
           "Periodos",
           style: TextStyle(
@@ -167,21 +160,13 @@ class _PeriodScreenState extends State<PeriodScreen> {
         stream: _repo.watchAll(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.purplePrimary),
-            );
+            return const AppLoadingView();
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  "Error al cargar periodos: ${snapshot.error}",
-                  style: const TextStyle(color: Colors.white70),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            return AppErrorView(
+              message: "No se pudieron cargar los periodos",
+              error: snapshot.error
             );
           }
 
@@ -196,7 +181,7 @@ class _PeriodScreenState extends State<PeriodScreen> {
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (_, index) => _PeriodTile(
               period: periods[index],
-              formatDate: _formatDate,
+              formatDate: formatShortDate,
               onEdit: () => _openEdit(periods[index]),
               onDelete: () => _confirmDelete(periods[index]),
               onArchive: () => _confirmArchive(periods[index]),
@@ -308,14 +293,6 @@ class _PeriodTile extends StatelessWidget {
               color: AppColors.purplePrimary,
             ),
             tooltip: "Editar",
-          ),
-          IconButton(
-            onPressed: onArchive,
-            icon: const Icon(
-              Icons.archive_outlined,
-              color: Colors.orangeAccent,
-            ),
-            tooltip: "Archivar",
           ),
           IconButton(
             onPressed: onDelete,

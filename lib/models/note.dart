@@ -27,7 +27,7 @@ class Note {
       courseId: data['courseId'] as String?,
       title: data['title'] as String,
       content: data['content'] as String,
-      colorCode: data['colorCode'] as int? ?? 0xFF1E1E1E, // Default color if not provided
+      colorCode: data['colorCode'] as int? ?? 0xFF1E1E1E, // Color por defecto si no viene en el doc
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

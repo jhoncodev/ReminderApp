@@ -55,7 +55,7 @@ class CourseRepository {
   }
 
   // ==========================================
-  // READ (Single Course for display)
+  // LEER (un curso por id)
   // ==========================================
   Future<Course?> getCourseById(String courseId) async {
     final doc = await _coursesRef.doc(courseId).get();
@@ -72,7 +72,7 @@ class CourseRepository {
   }
 
   // ==========================================
-  // READ (All Courses for the Current User)
+  // LEER (todos los cursos del usuario actual)
   // ==========================================
   Stream<List<Course>> getUserCourses() {
     final userId = _currentUserId;
@@ -82,7 +82,6 @@ class CourseRepository {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs.map((doc) {
-            print('Course: ${doc.data().name}');
             return doc.data();
           }).toList(),
         );

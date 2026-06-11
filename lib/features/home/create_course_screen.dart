@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
+import 'package:reminder_app/core/utils/date_helpers.dart';
 import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
@@ -99,18 +101,18 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
     final name = nameController.text.trim();
     if (name.isEmpty) {
-      _showSnack("El nombre es obligatorio");
+      showErrorSnack(context, "El nombre es obligatorio");
       return;
     }
 
     if (_sessions.isEmpty) {
-      _showSnack("Agrega al menos una sesión");
+      showErrorSnack(context, "Agrega al menos una sesión");
       return;
     }
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      _showSnack("No hay usuario autenticado");
+      showErrorSnack(context, "No hay usuario autenticado");
       return;
     }
 
@@ -155,30 +157,15 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       }
 
       if (!mounted) return;
-      _showSnack(
-        widget.isEditing
-            ? "Curso actualizado correctamente"
-            : "Curso creado correctamente",
-      );
-      Navigator.pop(context);
+        widget.isEditing ? showSuccessSnack(context, "Curso actualizado correctamente") : showSuccessSnack(context, "Curso creado correctamente");
+        Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      _showSnack("Error al guardar: $e");
+        showErrorSnack(context, "Error al guardar el curso");
+        debugPrint("Error al guardar el curso: $e");
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  String _formatDate(DateTime date) {
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return "$m/$d/${date.year}";
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _openPeriodSelector() async {
@@ -237,7 +224,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                           style: const TextStyle(color: Colors.white),
                         ),
                         subtitle: Text(
-                          "${_formatDate(period.startDate)} - ${_formatDate(period.endDate)}",
+                          "${formatShortDate(period.startDate)} - ${formatShortDate(period.endDate)}",
                           style: const TextStyle(color: AppColors.hint),
                         ),
                         onTap: () => Navigator.pop(ctx, period),
@@ -376,7 +363,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           if (selectedPeriod != null) ...[
             const SizedBox(height: 8),
             Text(
-              "${_formatDate(selectedPeriod!.startDate)} - ${_formatDate(selectedPeriod!.endDate)}",
+              "${formatShortDate(selectedPeriod!.startDate)} - ${formatShortDate(selectedPeriod!.endDate)}",
               style: const TextStyle(color: AppColors.hint, fontSize: 12),
             ),
           ],

@@ -8,7 +8,7 @@ class BottomNavBar extends StatelessWidget {
   final String currentRoute;
 
   void _onNavTap(BuildContext context, String route) {
-    if (currentRoute == route) return; // already here
+    if (currentRoute == route) return; // ya estamos en esta ruta
     Navigator.pushReplacementNamed(context, route);
   }
 

@@ -49,7 +49,7 @@ class Reminder {
     );
   }
 
-  // Convertimos el objeto de tipo Activity a un documento para
+  // Convertimos el objeto de tipo Reminder a un documento para
   // poder subirlo a firestore
   Map<String, dynamic> toFirestore() {
     return {

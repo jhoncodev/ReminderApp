@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/features/grade/grade_screen.dart';
 import 'package:reminder_app/features/home/create_course_screen.dart';
@@ -22,12 +24,7 @@ class _CourseScreenState extends State<CourseScreen> {
 
   String _formatSessions(List<CourseSession> sessions) {
     if (sessions.isEmpty) return "Sin sesiones";
-    return sessions
-        .map(
-          (s) =>
-              '${_dayLabels[s.dayOfWeek]} ${_formatHourShort(s.startTime)} - ${_formatHourShort(s.endTime)}',
-        )
-        .join(", ");
+    return sessions.map((s) => '${_dayLabels[s.dayOfWeek]} ${_formatHourShort(s.startTime)} - ${_formatHourShort(s.endTime)}').join(", ");
   }
 
   String _formatHourShort(String time24h) {
@@ -74,14 +71,11 @@ class _CourseScreenState extends State<CourseScreen> {
     try {
       await _repo.delete(course.id!);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Curso eliminado")));
+        showSuccessSnack(context, "Curso eliminado");
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error al eliminar: $e")));
+        showErrorSnack(context, "Error al eliminar el curso");
+        debugPrint("Error al eliminar el curso: $e");
     }
   }
 
@@ -118,21 +112,13 @@ class _CourseScreenState extends State<CourseScreen> {
         stream: _repo.watchAll(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.purplePrimary),
-            );
+            return const AppLoadingView();
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  "Error al cargar cursos: ${snapshot.error}",
-                  style: const TextStyle(color: Colors.white70),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            return AppErrorView(
+              message: "No se pudieron cargar los cursos",
+              error: snapshot.error,
             );
           }
 

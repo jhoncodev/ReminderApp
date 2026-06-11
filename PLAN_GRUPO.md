@@ -1,7 +1,7 @@
 # Plan de Trabajo Grupal - Reminder App
 
 > Documento de planificación compartida entre los 3 integrantes del proyecto.
-> Última actualización: 2026-06-01
+> Última actualización: 2026-06-10
 
 ---
 
@@ -205,8 +205,18 @@ class Classroom {
 - [x] **AuthGate** (2026-06-01): widget con `StreamBuilder` sobre `authStateChanges()` que decide Login/Home al abrir la app. Configurado como `home: const AuthGate()` en `app.dart` (`lib/features/auth/auth_gate.dart`).
 - [x] **Icono de la app + nombre "Reminder App"** (2026-06-01): icono adaptativo (campana blanca sobre gradiente morado #B483FF→#7A4BFF) generado con `flutter_launcher_icons` para Android e iOS. Nombre en `AndroidManifest.xml` (`android:label`) e `Info.plist` (`CFBundleDisplayName` + `CFBundleName`). Assets en `assets/icon/` (ic_full / ic_background / ic_foreground).
 
+- [x] **Login con Google** (2026-06-05): `AuthService.signInWithGoogle()` en `lib/services/auth_service.dart` + botón "Continuar con Google". Crea el doc `users/{uid}` si no existe (avatar 'anonimo'). Cancelar el prompt no muestra error.
+- [x] **Entidad `Note` (Apuntes)** (2026-06-05): modelo + `NoteRepository` + `NotesScreen` (grid, búsqueda por título, filtro por curso) + `CreateNoteScreen`. Color por apunte.
+- [x] **ProfileScreen** (2026-06-05): ver/editar nombre y avatar (ya no es placeholder).
+- [x] **Archivar periodo** (2026-06-05): campo `isArchived` en Period + `ArchivedPeriodScreen` con restaurar.
+- [x] **Color por curso** (2026-06-05): `colorCode` en Course + widget `ColorSelector`.
+- [x] **Estabilización general** (2026-06-10): ver sección 10 (reglas Firestore, sistema de mensajes, errores de auth en español, localización de fechas).
+
 **Pendiente:**
-- Login con Google (`google_sign_in` + Firebase).
+- Recuperar contraseña (Firebase Auth `sendPasswordResetEmail`).
+- Modo offline con persistencia de Firestore.
+- Pantalla Compartir completa (recordatorios, apuntes, cursos, periodos).
+- Selector de avatar tras el primer login con Google (detectar con `additionalUserInfo.isNewUser`).
 - Entidad `Teacher` con CRUD propio + vínculo a Course.
 - Entidad `Classroom` con CRUD propio + vínculo a CourseSession.
 - Entidad `Note` (apuntes) libre y por curso.
@@ -408,13 +418,46 @@ Estos temas se decidirán cuando lleguemos a su sprint:
 - Bottomsheet reutilizable `SessionEditorSheet` para crear/editar sesión.
 
 ### Lo que está roto / pendiente
-- La pantalla de Recordatorios y las Calificaciones requieren **índices compuestos en Firestore**: Recordatorios (`userId` + `createdAt`) y Calificaciones (`userId` + `courseId` + `createdAt`). Se crean desde el link del error `failed-precondition` la primera vez que falla la query.
-- Pantallas Profile y Share son placeholders vacíos — no entrar en la demo.
+- Pantalla Share es placeholder vacío — no entrar en la demo (Profile ya está implementada).
 
 ### Deuda técnica conocida
-- `schedule_screen.dart`: días en inglés (`Mon`-`Sun`), colores hardcoded (Scaffold, header, grid, modal de detalle), `print` con emojis en `_loadCourses` (líneas ~58-91), `withOpacity()` deprecado (usar `withValues(alpha:)`), carga manual con `Future` en vez de `CourseRepository.watchAll()` con StreamBuilder.
+- `schedule_screen.dart`: colores hardcoded (Scaffold, header, grid, modal de detalle) y carga manual con `Future` en vez de `CourseRepository.watchAll()` con StreamBuilder. (Los `print` con emojis, los días en inglés y los `withOpacity` deprecados ya se corrigieron el 2026-06-10.)
+- 6 lints info restantes en `flutter analyze`: 3 `use_super_parameters` (color_selector, notes_screen, create_note_screen), parámetro `sum` en `grade_repository.dart:95`, y 2 avisos menores en `auth_service.dart` (nullable innecesario y `await` sobre no-Future).
 - Colores hardcoded en `lib/core/widgets/bottom_nav_bar.dart` — migrar a `AppColors`.
 - Tema oscuro de pickers (`showDatePicker`, `showTimePicker`) está duplicado entre `app_date_picker_field.dart` y `session_editor_sheet.dart` — extraer a helper si aparece un tercer uso (regla de tres).
 - Cosméticos en `home_screen.dart`: typo `upcoming . isEmpty` (línea ~226, Dart lo acepta), clase de estado `_HomeScreen` debería ser `_HomeScreenState` (convención).
 - Comentarios con "actividad" en `reminder_repository.dart` — no UI, sin urgencia.
 - Typo histórico `AppColors.organe` → corregido a `orange` el 2026-05-21.
+
+---
+
+## 10. Estabilización del 2026-06-10
+
+Sesión de cierre de bugs tras los commits del 2026-06-05. Todo verificado con `flutter analyze` (41 → 24 issues, los restantes son deuda vieja).
+
+### Firebase (configuración compartida — ya hecho, no repetir)
+- **Reglas de Firestore de producción publicadas.** El test mode expiró el 2026-06-06 y TODA la app fallaba con `permission-denied`. Las reglas nuevas exigen sesión iniciada y que cada documento pertenezca al usuario (`userId` == uid; en `users/` el ID del doc es el uid). Regla derivada: toda colección nueva DEBE guardar campo `userId` y toda query DEBE filtrar por él.
+- **7 índices compuestos creados** (reminders, courses, notes: `userId`+`createdAt`; periods: `userId`+`startDate`; grades: `userId`+`createdAt` y `userId`+`courseId`+`createdAt`; notes: `userId`+`courseId`+`createdAt`).
+
+### Sistema de mensajes coherente (NUEVA CONVENCIÓN OBLIGATORIA)
+- `lib/core/utils/app_feedback.dart`: `showSuccessSnack(context, msg)` / `showErrorSnack(context, msg)`. Único estilo de SnackBar en la app.
+- `lib/core/widgets/status_views.dart`: `AppLoadingView` y `AppErrorView(message, error)` para StreamBuilder/FutureBuilder.
+- **Regla: jamás mostrar `$e` ni `${snapshot.error}` al usuario.** Mensaje en español por el helper + `debugPrint` del detalle técnico. Nada de `ScaffoldMessenger` directo ni `print`.
+- Colores semánticos `AppColors.success` / `AppColors.error`.
+
+### Errores de autenticación en español
+- `authErrorMessage(FirebaseAuthException)` en `lib/services/auth_service.dart`: mapea códigos a español. Clave: firebase_auth 6.x devuelve `invalid-credential` (ya no `wrong-password`/`user-not-found`). Usada en login (email y Google) y register. El default nunca expone `e.message` (inglés).
+- Cancelar el prompt de Google se absorbe en el servicio (`GoogleSignInExceptionCode.canceled` → null, sin mensaje); otros errores se relanzan a la pantalla.
+
+### Localización de fechas
+- `flutter_localizations` + `locale: es` en `MaterialApp` (`app.dart`): DatePicker/TimePicker en español y habilita `DateFormat(..., 'es')`.
+- Formato numérico unificado a **dd/mm/aaaa**: `formatShortDate()` en `lib/core/utils/date_helpers.dart` (reemplazó 4 copias privadas de `_formatDate` + el formato gringo m/d/y del picker). El parser de `create_period_screen` lee día-primero (cambiar formato y parser SIEMPRE juntos).
+- Horario: días Lun-Dom y mes en español.
+
+### Otros fixes
+- Apuntes 100% en español (pantallas, diálogo de eliminar, hints, empty states).
+- Bug de `if` sin llaves en `create_note_screen` (el `setState` se ejecutaba aunque el widget estuviera destruido). Regla: siempre llaves en los `if`.
+- Guardas `if (!mounted) return;` tras `await` antes de usar `context` (lint `use_build_context_synchronously`).
+- Eliminados: `print` de producción (repos + schedule), código muerto en `user_repository`, imports sin uso.
+- Pantallas de apuntes alineadas a la paleta (`AppColors.surface`/`background`/`purplePrimary` en vez de literales).
+- Decisión: `auth_service` NO hace merge del perfil en cada login Google (pisaría ediciones del usuario en Perfil); solo crea el doc si no existe.

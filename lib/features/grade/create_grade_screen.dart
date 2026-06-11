@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/data/grade_repository.dart';
 import 'package:reminder_app/models/grade.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -160,19 +161,14 @@ class _CreateGradeScreenState extends State<CreateGradeScreen> {
       }
 
       if (mounted) {
+        widget.gradeToEdit == null ? showSuccessSnack(context, "Calificación creada") : showSuccessSnack(context, "Calificación actualizada");
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              widget.gradeToEdit == null
-                  ? 'Calificación creada'
-                  : 'Calificación actualizada',
-            ),
-          ),
-        );
       }
     } catch (e) {
-      _showError('Error: $e');
+      if(!mounted) return;
+        showErrorSnack(context, "No se pudo guardar la calificacion");
+        debugPrint("Error al guardar la calificación: $e");
+      
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -181,9 +177,7 @@ class _CreateGradeScreenState extends State<CreateGradeScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    showErrorSnack(context, message);
   }
 
   @override
@@ -246,8 +240,8 @@ class _CreateGradeScreenState extends State<CreateGradeScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _isValidWeight
-                      ? Colors.green.withOpacity(0.2)
-                      : Colors.red.withOpacity(0.2),
+                      ? Colors.green.withValues(alpha:0.2)
+                      : Colors.red.withValues(alpha:0.2),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: _isValidWeight ? Colors.green : Colors.red,
@@ -285,7 +279,7 @@ class _CreateGradeScreenState extends State<CreateGradeScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  disabledBackgroundColor: AppColors.purplePrimary.withOpacity(
+                  disabledBackgroundColor: AppColors.purplePrimary.withValues(alpha:
                     0.5,
                   ),
                 ),
@@ -344,12 +338,12 @@ class _CreateGradeScreenState extends State<CreateGradeScreen> {
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+            hintStyle: TextStyle(color: Colors.white.withValues(alpha:0.5)),
             filled: true,
             fillColor: const Color(0xFF0F0F0F),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha:0.1)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

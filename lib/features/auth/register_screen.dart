@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_password_field.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
@@ -8,6 +9,7 @@ import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:reminder_app/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -83,13 +85,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // 1. Create the user in Firebase Authentication
+      // 1. Crear el usuario en Firebase Authentication
       if (passwordController.text.trim() !=
           confirmPasswordController.text.trim()) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Las contraseñas no coinciden')),
-          );
+          showErrorSnack(context, "Las contraseñas no coinciden");
         }
         return;
       }
@@ -112,26 +112,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
           });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cuenta creada con éxito')),
-        );
+        showSuccessSnack(context, "Cuenta creada con éxito");
 
-        // Clean inputs
+        // Limpiar campos
         fullNameController.clear();
         emailController.clear();
         passwordController.clear();
         confirmPasswordController.clear();
         setState(() => _selectedAvatar = 'anonimo');
 
-        // Return login
+        // Volver al login
         Navigator.pop(context);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Error de registro: ${e.code}');
+      if (!mounted) return;
+      showErrorSnack(context, authErrorMessage(e));
+    } catch (e){
+      debugPrint("Error de registro: $e");
+      if(!mounted) return;
+      showErrorSnack(context, "Ocurrió un error, intenta de nuevo");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -141,7 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const DarkAppBar(title: "Regístrate"), // Deep dark background
+      appBar: const DarkAppBar(title: "Regístrate"),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -191,7 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              // Full name
+              // Nombre completo
               const AppLabel(text: 'Nombre y Apellido'),
               const SizedBox(height: 8),
               AppTextField(
@@ -200,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Email
+              // Correo
               const AppLabel(text: "Correo Electrónico"),
               const SizedBox(height: 8),
               AppTextField(
@@ -209,19 +209,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Password
+              // Contraseña
               const AppLabel(text: "Contraseña"),
               const SizedBox(height: 8),
               AppPasswordField(controller: passwordController),
               const SizedBox(height: 20),
 
-              // Confirm Password
+              // Confirmar contraseña
               const AppLabel(text: "Confirmar Contraseña"),
               const SizedBox(height: 8),
               AppPasswordField(controller: confirmPasswordController),
               const SizedBox(height: 32),
 
-              // Register Button
+              // Botón de registro
               PrimaryGradientButton(
                 text: "Registrarse",
                 onPressed: _isLoading ? null : _registerUser,
@@ -229,7 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Login Link
+              // Link a login
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

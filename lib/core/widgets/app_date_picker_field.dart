@@ -30,7 +30,7 @@ class AppDatePickerField extends StatelessWidget {
     );
 
     if (picked != null) {
-      controller.text = "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
+      controller.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
     }
   }
 
@@ -52,7 +52,7 @@ class AppDatePickerField extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    hasValue ? controller.text: "mm/dd/yyyy",
+                    hasValue ? controller.text: "dd/mm/aaaa",
                     style: TextStyle(
                       color: hasValue ? Colors.white : AppColors.hint,
                     ),

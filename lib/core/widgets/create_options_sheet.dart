@@ -3,7 +3,6 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/features/home/reminder_screen.dart';
 import 'package:reminder_app/features/home/course_screen.dart';
 import 'package:reminder_app/features/home/period_screen.dart';
-import 'package:reminder_app/features/note/create_note_screen.dart';
 import 'package:reminder_app/features/note/notes_screen.dart';
 
 class CreateOptionsSheet {

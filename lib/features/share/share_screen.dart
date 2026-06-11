@@ -9,7 +9,7 @@ class ShareScreen extends StatelessWidget {
     return const Scaffold(
       backgroundColor: Color(0xFF0D0D0F),
       bottomNavigationBar: BottomNavBar(currentRoute: '/share'),
-      body: Center(child: Text('Share', style: TextStyle(color: Colors.white))),
+      body: Center(child: Text('Compartir', style: TextStyle(color: Colors.white))),
     );
   }
 }

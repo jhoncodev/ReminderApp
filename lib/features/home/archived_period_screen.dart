@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
+import 'package:reminder_app/core/utils/date_helpers.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/models/period.dart';
 
@@ -13,12 +16,6 @@ class ArchivedPeriodScreen extends StatefulWidget {
 
 class _ArchivedPeriodScreenState extends State<ArchivedPeriodScreen> {
   final _repo = PeriodRepository();
-
-  String _formatDate(DateTime date) {
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return "$m/$d/${date.year}";
-  }
 
   Future<void> _confirmUnarchive(Period period) async {
     final confirmed = await showDialog<bool>(
@@ -57,15 +54,11 @@ class _ArchivedPeriodScreenState extends State<ArchivedPeriodScreen> {
     try {
       await _repo.unarchive(period);
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Periodo restaurado")));
+        showSuccessSnack(context, "Periodo restaurado");
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error al restaurar: $e")));
+        showErrorSnack(context, "Error al restaurar el periodo");
+        debugPrint("Error al restaurar el periodo: $e");
     }
   }
 
@@ -78,21 +71,13 @@ class _ArchivedPeriodScreenState extends State<ArchivedPeriodScreen> {
         stream: _repo.watchArchived(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.purplePrimary),
-            );
+            return const AppLoadingView();
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  "Error al cargar: ${snapshot.error}",
-                  style: const TextStyle(color: Colors.white70),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            return AppErrorView(
+              message: "No se pudieron cargar las calificaciones",
+              error: snapshot.error,
             );
           }
 
@@ -107,7 +92,7 @@ class _ArchivedPeriodScreenState extends State<ArchivedPeriodScreen> {
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (_, index) => _ArchivedPeriodTile(
               period: periods[index],
-              formatDate: _formatDate,
+              formatDate: formatShortDate,
               onUnarchive: () => _confirmUnarchive(periods[index]),
             ),
           );

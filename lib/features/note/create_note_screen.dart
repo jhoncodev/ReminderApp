@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
 import '../../data/note_repository.dart';
 import '../../data/course_repository.dart';
 import '../../models/note.dart';
@@ -7,10 +9,9 @@ import '../../models/course.dart';
 
 class CreateNoteScreen extends StatefulWidget {
   final String? courseId;
-  final Note? note; // ADDED: If this is passed in, we are in "Edit Mode"
+  final Note? note; // Si llega un apunte, estamos en modo edición
 
-  const CreateNoteScreen({Key? key, this.courseId, this.note})
-    : super(key: key);
+  const CreateNoteScreen({super.key, this.courseId, this.note});
 
   @override
   State<CreateNoteScreen> createState() => _CreateNoteScreenState();
@@ -25,23 +26,23 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
 
   late DateTime _noteDateTime;
   String? _selectedCourseId;
-  String _selectedCourseName = 'All notes';
+  String _selectedCourseName = 'Todos los apuntes';
 
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Pre-populate the fields if we are editing an existing note
+    // Prellenar los campos si editamos un apunte existente
     _titleController = TextEditingController(text: widget.note?.title ?? '');
     _contentController = TextEditingController(
       text: widget.note?.content ?? '',
     );
 
-    // Use the existing note's date, or current time if it's new
+    // Fecha del apunte existente, o la actual si es nuevo
     _noteDateTime = widget.note?.createdAt ?? DateTime.now();
 
-    // Priority: 1. Existing Note's Course -> 2. Filter's Course -> 3. Null (All Notes)
+    // Prioridad: 1. curso del apunte -> 2. curso del filtro -> 3. null (todos)
     _selectedCourseId = widget.note?.courseId ?? widget.courseId;
 
     _fetchSelectedCourseName();
@@ -61,11 +62,12 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
         if (mounted && course != null) {
           setState(() {
             _selectedCourseName = course.name;
-            _selectedCourseColor = course.colorCode; // GET THE COLOR
+            _selectedCourseColor = course.colorCode; // Toma el color del curso
           });
         }
       } catch (e) {
-        // Silently fail
+        // Si falla, se mantiene el nombre y color por defecto
+        debugPrint("Error al cargar el curso del apunte: $e");
       }
     }
   }
@@ -75,9 +77,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
     final content = _contentController.text.trim();
 
     if (title.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both a title and content.')),
-      );
+      showErrorSnack(context, "Escribe un título y un contenido");
       return;
     }
 
@@ -87,7 +87,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
 
     try {
       if (widget.note == null) {
-        // CREATE: No note was passed in
+        // CREAR: no llegó apunte existente
         await _noteRepository.addNote(
           title: title,
           content: content,
@@ -95,61 +95,61 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
           colorCode: _selectedCourseColor,
         );
       } else {
-        // UPDATE: Overwrite the existing note
+        // ACTUALIZAR: sobrescribe el apunte existente
         final updatedNote = Note(
           id: widget.note!.id,
           userId: widget.note!.userId,
           courseId:
-              _selectedCourseId, // Allows moving a note to a different course
+              _selectedCourseId, // Permite mover el apunte a otro curso
           title: title,
           content: content,
           createdAt: widget.note!.createdAt,
-          colorCode: _selectedCourseColor, // Keep original color
+          colorCode: _selectedCourseColor, // Mantiene el color original
         );
         await _noteRepository.updateNote(updatedNote);
       }
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
+      debugPrint("Error al guardar el apunte: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error saving note: $e')));
+        showErrorSnack(context, "Error al guardar el apunte");
       }
     } finally {
-      if (mounted)
+      if (mounted){
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 
-  // Bonus: Allow deleting a note if we are in Edit Mode
+  // Eliminar apunte (solo disponible en modo edición)
   Future<void> _deleteNote() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.surface,
         title: const Text(
-          'Delete Note?',
+          '¿Eliminar Apunte?',
           style: TextStyle(color: Colors.white),
         ),
         content: const Text(
-          'This action cannot be undone.',
+          'Esta acción no se puede deshacer.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text(
-              'CANCEL',
+              'Cancelar',
               style: TextStyle(color: Colors.white54),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
-              'DELETE',
+              'Eliminar',
               style: TextStyle(color: Colors.redAccent),
             ),
           ),
@@ -161,13 +161,13 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
       setState(() => _isLoading = true);
       try {
         await _noteRepository.deleteNote(widget.note!.id);
-        if (mounted) Navigator.pop(context); // Go back to list after deleting
+        if (mounted) Navigator.pop(context); // Volver a la lista tras eliminar
       } catch (e) {
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error deleting: $e')));
-        setState(() => _isLoading = false);
+        debugPrint("Error al eliminar el apunte: $e");
+        if (mounted){
+          showErrorSnack(context, "Error al eliminar el apunte");
+          setState(() => _isLoading = false);
+        }
       }
     }
   }
@@ -175,7 +175,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
   void _showCourseSelection() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -204,7 +204,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                   const Padding(
                     padding: EdgeInsets.only(bottom: 16.0),
                     child: Text(
-                      'Select Course',
+                      'Seleccionar Curso',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -214,19 +214,19 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                   ),
                   ListTile(
                     title: const Text(
-                      'All notes',
+                      'Todos los apuntes',
                       style: TextStyle(color: Colors.white),
                     ),
                     leading: Icon(
                       Icons.clear,
                       color: _selectedCourseId == null
-                          ? const Color(0xFF6C63FF)
+                          ? AppColors.purplePrimary
                           : Colors.white54,
                     ),
                     onTap: () {
                       setState(() {
                         _selectedCourseId = null;
-                        _selectedCourseName = 'All notes';
+                        _selectedCourseName = 'Todos los apuntes';
                       });
                       Navigator.pop(context);
                     },
@@ -244,14 +244,14 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                                 leading: Icon(
                                   Icons.book,
                                   color: course.id == _selectedCourseId
-                                      ? const Color(0xFF6C63FF)
+                                      ? AppColors.purplePrimary
                                       : Colors.white54,
                                 ),
                                 onTap: () {
                                   setState(() {
                                     _selectedCourseId = course.id;
                                     _selectedCourseName = course.name;
-                                    _selectedCourseColor = course.colorCode; // GET THE COLOR
+                                    _selectedCourseColor = course.colorCode; // Toma el color del curso
                                   });
                                   Navigator.pop(context);
                                 },
@@ -277,14 +277,14 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
         _noteDateTime.day == now.day) {
       return 'Today, ${DateFormat.jm().format(_noteDateTime)}';
     } else {
-      return DateFormat('MMMM d, h:mm a').format(_noteDateTime);
+      return DateFormat("d 'de' MMMM, h:mm a", 'es').format(_noteDateTime);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -293,7 +293,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // If we are editing, show the Trash Can icon
+          // En modo edición se muestra el ícono de eliminar
           if (widget.note != null && !_isLoading)
             IconButton(
               icon: const Icon(
@@ -340,7 +340,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: const InputDecoration(
-                    hintText: 'Title',
+                    hintText: 'Título',
                     hintStyle: TextStyle(color: Colors.white24),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
@@ -365,7 +365,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(100),
                           border: Border.all(color: Colors.white10),
                         ),
@@ -400,7 +400,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                   maxLines: null,
                   style: const TextStyle(color: Colors.white, fontSize: 18),
                   decoration: const InputDecoration(
-                    hintText: 'Enter note',
+                    hintText: 'Escribe tu apunte',
                     hintStyle: TextStyle(color: Colors.white24),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,

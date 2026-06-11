@@ -8,7 +8,7 @@ class Course {
   final String name;
   final List<CourseSession> sessions;
   final String? note;
-  final int colorCode; // Hex color code as a string, e.g. "#FF6C63FF"
+  final int colorCode; // Color del curso en ARGB, ej. 0xFF6C63FF
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -41,7 +41,7 @@ class Course {
           .toList(),
       note: data['note'] as String?,
       colorCode: data['colorCode'] as int? ?? 0xFF6C63FF,
-      // THE FIX: Use 'Timestamp?' to allow nulls, then fallback to DateTime.now() if it's missing
+      // Timestamp? permite docs viejos sin fecha; si falta, fallback a DateTime.now()
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );

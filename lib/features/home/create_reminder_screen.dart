@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/app_feedback.dart';
+import 'package:reminder_app/core/utils/date_helpers.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
@@ -61,24 +63,18 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
     super.dispose();
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _saveReminder() async {
     if (_isSaving) return;
 
     final name = nameController.text.trim();
     if (name.isEmpty) {
-      _showSnack("El nombre es obligatorio");
+      showErrorSnack(context, "El nombre es obligatorio");
       return;
     }
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      _showSnack("No hay usuario autenticado");
+      showErrorSnack(context, "No hay usuario autenticado");
       return;
     }
 
@@ -139,15 +135,12 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
       }
 
       if (!mounted) return;
-      _showSnack(
-        widget.isEditing
-            ? "Recordatorio actualizado correctamente"
-            : "Recordatorio creado correctamente",
-      );
-      Navigator.pop(context);
+        widget.isEditing ? showSuccessSnack(context, "Recordatorio actualizado correctamente") : showSuccessSnack(context, "Recordatorio creado correctamente");
+        Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      _showSnack("Error al guardar: $e");
+        showErrorSnack(context, "Error al guardar el recordatorio");
+        debugPrint("Error al guardar el recordatorio: $e");
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -167,7 +160,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Acitivity name
+              // Nombre del recordatorio
               const AppLabel(text: "Nombre del Recordatorio"),
               const SizedBox(height: 8),
               AppTextField(
@@ -176,7 +169,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Notes
+              // Notas
               const AppLabel(text: "Notas / Detalles"),
               const SizedBox(height: 8),
               AppTextField(
@@ -186,7 +179,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Amount
+              // Monto
               const AppLabel(text: "Presupuesto"),
               const SizedBox(height: 8),
               AppTextField(
@@ -196,13 +189,13 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Frequency
+              // Frecuencia
               const AppLabel(text: "Frecuencia"),
               const SizedBox(height: 8),
               _frequencySelector(),
               const SizedBox(height: 20),
 
-              // Days
+              // Días
               const AppLabel(text: "Días Seleccionados"),
               const SizedBox(height: 8),
               DaysSelector(
@@ -268,7 +261,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
                       children: [
                         Text(
                           _selectedDate != null
-                              ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                              ? formatShortDate(_selectedDate!)
                               : 'Seleccionar fecha',
                           style: TextStyle(
                             color: _selectedDate != null
@@ -289,7 +282,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
               ],
               const SizedBox(height: 20),
 
-              // Create button
+              // Botón crear/guardar
               PrimaryGradientButton(
                 text: buttonText,
                 onPressed: _isSaving ? null : _saveReminder,
@@ -302,7 +295,7 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
     );
   }
 
-  // Frequency selector
+  // Selector de frecuencia
   Widget _frequencySelector() {
     final options = ["Una vez", "Diario", "Semanal", "Mensual"];
 

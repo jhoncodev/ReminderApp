@@ -249,7 +249,7 @@ class _HomeScreen extends State<HomeScreen> {
     );
   }
 
-  // --- Component Builders ---
+  // --- Builders de componentes ---
 
   Widget _buildHeader() {
     return Row(
@@ -333,7 +333,7 @@ class _HomeScreen extends State<HomeScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: AppColors.card, // Dark card background
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -381,7 +381,7 @@ class _HomeScreen extends State<HomeScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Time Column
+          // Columna de hora
           SizedBox(
             width: 60,
             child: Text(
@@ -393,14 +393,14 @@ class _HomeScreen extends State<HomeScreen> {
               ),
             ),
           ),
-          // Event Card
+          // Card del evento
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(20),
-                // The colored left border effect
+                // Borde izquierdo de color
                 border: Border(left: BorderSide(color: accentColor, width: 4)),
               ),
               child: Row(

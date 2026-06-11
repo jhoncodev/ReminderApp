@@ -3,8 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:reminder_app/models/user.dart' as app_user;
 
 class UserRepository {
-  // This class can be used to manage user-related data operations, such as fetching user details, updating profiles, etc.
-  // For now, it's just a placeholder for future user-related functionalities.
+  // Repositorio del perfil de usuario (colección 'users', docId = uid)
 
   String get _currentUserId {
     final user = FirebaseAuth.instance.currentUser;
@@ -35,9 +34,6 @@ class UserRepository {
   }
 
   Future<void> updateUser(app_user.User user) async {
-    if (_currentUserId == null) {
-      throw Exception('User ID is required for updating user data');
-    }
     await _usersRef.doc(_currentUserId).set(user);
   }
 }

@@ -1,45 +1,49 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // <-- Add this import
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // <-- Add Firestore instance
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<UserCredential?> signInWithGoogle() async {
     try {
       await GoogleSignIn.instance.initialize();
-      final GoogleSignInAccount? googleUser = await GoogleSignIn.instance.authenticate();
-
-      if (googleUser == null) return null;
+      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
+          .authenticate();
 
       final clientAuth = await googleUser.authorizationClient.authorizeScopes([
         'email',
         'profile',
       ]);
 
-      final googleAuth = await googleUser.authentication;
+      final googleAuth = googleUser.authentication;
 
       final OAuthCredential credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
         accessToken: clientAuth.accessToken,
       );
 
-      // 1. Sign in to Firebase
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
+      // 1. Iniciar sesión en Firebase
+      UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       User? user = userCredential.user;
 
-      // 2. Check if this Google user already has a profile in Firestore
+      // 2. Verificar si este usuario de Google ya tiene perfil en Firestore
       if (user != null) {
-        DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
+        DocumentSnapshot userDoc = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
-        // 3. If they don't exist, create their profile matching your Register flow
+        // 3. Si no existe, crear su perfil igual que en el flujo de registro
         if (!userDoc.exists) {
           await _firestore.collection('users').doc(user.uid).set({
-            // Pull the display name from Google, or default to 'Usuario'
-            'name': user.displayName ?? 'Usuario', 
+            // Nombre desde Google, o 'Usuario' por defecto
+            'name': user.displayName ?? 'Usuario',
             'email': user.email ?? '',
-            'avatarIcon': 'anonimo', // You can keep your local avatar logic!
+            'avatarIcon': 'anonimo', // Por defecto; el usuario puede cambiarlo en Perfil
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
@@ -47,15 +51,39 @@ class AuthService {
       }
 
       return userCredential;
-      
-    } catch (e) {
-      print("Error during Google Sign-In: $e");
-      return null;
+    } on GoogleSignInException catch (e) {
+      // Cancelar el prompt no es un error: no se muestra nada
+      if (e.code == GoogleSignInExceptionCode.canceled) return null;
+      rethrow;
     }
   }
 
   Future<void> signOut() async {
     await GoogleSignIn.instance.disconnect();
     await _auth.signOut();
+  }
+}
+
+// Traducción de codigos de FirebaseAuthException a mensajes para el usuario.
+String authErrorMessage(FirebaseAuthException e) {
+  switch (e.code) {
+    case 'invalid-credential':
+    case 'user-not-found':
+    case 'wrong-password':
+      return 'Correo o contraseña incorrectos';
+    case 'invalid-email':
+      return 'El correo electrónico está mal formateado';
+    case 'too-many-requests':
+      return 'Demasiados intentos, espera unos minutos';
+    case 'user-disabled':
+      return 'Esta cuenta está deshabilitada';
+    case 'network-request-failed':
+      return 'Sin conexión a internet';
+    case 'email-already-in-use':
+      return 'Ya existe una cuenta con ese correo';
+    case 'weak-password':
+      return 'La contraseña es muy débil (mínimo 6 caracteres)';
+    default:
+      return 'Ocurrió un error, intenta de nuevo';
   }
 }

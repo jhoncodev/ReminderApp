@@ -11,7 +11,7 @@ class CourseSession {
     this.roomName,
   });
 
-  // Convert a firestore map to CourseSession Object
+  // Convierte un mapa de Firestore a un objeto CourseSession
   factory CourseSession.fromMap(Map<String, dynamic> map){
     return CourseSession(
       dayOfWeek: map['dayOfWeek'] as int,
@@ -21,7 +21,7 @@ class CourseSession {
     );
   }
 
-  //Convert a CourseSession Object to Firestore Map
+  // Convierte un objeto CourseSession a un mapa para Firestore
   Map<String, dynamic> toMap(){
     return{
       'dayOfWeek': dayOfWeek,

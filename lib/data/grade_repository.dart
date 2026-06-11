@@ -92,7 +92,7 @@ class GradeRepository {
 
   // Calcula la suma total de pesos
   double calculateTotalWeight(List<Grade> grades) {
-    return grades.fold(0.0, (sum, grade) => sum + grade.weight);
+    return grades.fold(0.0, (sums, grade) => sums + grade.weight);
   }
 
   // Valida que la suma de pesos no exceda 100

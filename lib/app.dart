@@ -6,6 +6,8 @@ import 'package:reminder_app/features/home/home_screen.dart';
 import 'package:reminder_app/features/profile/profile_screen.dart';
 import 'package:reminder_app/features/schedule/schedule_screen.dart';
 import 'package:reminder_app/features/share/share_screen.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
 
 
 class MyApp extends StatelessWidget{
@@ -14,6 +16,9 @@ class MyApp extends StatelessWidget{
   @override
   Widget build(BuildContext context){
     return MaterialApp(
+      locale: const Locale('es'),
+      supportedLocales: const[Locale('es')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       title: 'Reminder App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

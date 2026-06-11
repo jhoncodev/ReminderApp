@@ -12,6 +12,9 @@ class Reminder {
   final DateTime updatedAt;
   final String? startTime; // "HH:mm"
   final DateTime? date;
+  // Recordatorio grabado: nombre del archivo de audio LOCAL del dispositivo
+  // (el audio no se sincroniza entre dispositivos ni viaja al compartir)
+  final String? audioFileName;
 
   Reminder({
     this.id,
@@ -25,7 +28,10 @@ class Reminder {
     required this.updatedAt,
     this.startTime,
     this.date,
+    this.audioFileName,
   });
+
+  bool get isRecorded => audioFileName != null;
 
   // Convertimos el documento de Reminder que traemos de firestore
   // a un objeto de tipo Reminder para usar libremente en la App
@@ -46,6 +52,7 @@ class Reminder {
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       startTime: data['startTime'] as String?,
       date: data['date'] != null ? (data['date'] as Timestamp).toDate() : null,
+      audioFileName: data['audioFileName'] as String?,
     );
   }
 
@@ -63,6 +70,7 @@ class Reminder {
       'updatedAt': Timestamp.fromDate(updatedAt),
       if (startTime != null) 'startTime': startTime,
       if (date != null) 'date': Timestamp.fromDate(date!),
+      if (audioFileName != null) 'audioFileName': audioFileName,
     };
   }
 }

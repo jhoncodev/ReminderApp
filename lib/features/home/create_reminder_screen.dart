@@ -1,6 +1,11 @@
+import 'dart:async';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:record/record.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/audio_paths.dart';
 import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/utils/date_helpers.dart';
 import 'package:reminder_app/core/utils/picker_theme.dart';
@@ -14,9 +19,12 @@ import 'package:reminder_app/models/reminder.dart';
 
 class CreateReminderScreen extends StatefulWidget {
   final Reminder? reminder;
-  const CreateReminderScreen({super.key, this.reminder});
+  // true = recordatorio GRABADO (audio en vez de notas escritas)
+  final bool audioMode;
+  const CreateReminderScreen({super.key, this.reminder, this.audioMode = false});
 
   bool get isEditing => reminder != null;
+  bool get isAudio => audioMode || (reminder?.audioFileName != null);
 
   @override
   State<CreateReminderScreen> createState() => _CreateReminderScreenState();
@@ -36,11 +44,27 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
   bool _hasBudget = false;
   bool _isSaving = false;
 
+  // Grabación de audio (recordatorios de voz)
+  final _recorder = AudioRecorder();
+  final _previewPlayer = AudioPlayer();
+  String? _audioFileName;
+  bool _isRecording = false;
+  bool _isPreviewPlaying = false;
+  int _recordSeconds = 0;
+  Timer? _recordTimer;
+  bool _saved = false;
+  static const _maxRecordSeconds = 120;
+
   @override
   void initState() {
     super.initState();
+    _previewPlayer.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _isPreviewPlaying = false);
+    });
+
     final existing = widget.reminder;
     if (existing == null) return;
+    _audioFileName = existing.audioFileName;
 
     nameController.text = existing.name;
     notesController.text = existing.notes ?? '';
@@ -64,8 +88,102 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
     notesController.dispose();
     amountController.dispose();
     startTimeController.dispose();
+    _recordTimer?.cancel();
+    _recorder.dispose();
+    _previewPlayer.dispose();
+    // Si se grabó un audio nuevo pero NO se guardó, no dejar archivos huérfanos
+    if (!_saved &&
+        _audioFileName != null &&
+        _audioFileName != widget.reminder?.audioFileName) {
+      deleteReminderAudio(_audioFileName!);
+    }
     _selectedDate = null;
     super.dispose();
+  }
+
+  // ── Grabación ───────────────────────────────────────────────────────────
+
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      await _stopRecording();
+    } else {
+      await _startRecording();
+    }
+  }
+
+  Future<void> _startRecording() async {
+    if (!await _recorder.hasPermission()) {
+      if (!mounted) return;
+      showErrorSnack(context, "Permiso de micrófono denegado");
+      return;
+    }
+
+    // Re-grabar descarta el audio nuevo anterior (el original del
+    // recordatorio editado se conserva hasta guardar)
+    if (_audioFileName != null &&
+        _audioFileName != widget.reminder?.audioFileName) {
+      deleteReminderAudio(_audioFileName!);
+    }
+
+    await _previewPlayer.stop();
+    final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    final path = await reminderAudioPath(fileName);
+    // Calidad voz (32 kbps mono): 2 min ≈ 480 KB, entra en un doc de
+    // Firestore al compartir (límite 1 MB)
+    await _recorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        bitRate: 32000,
+        sampleRate: 22050,
+        numChannels: 1,
+      ),
+      path: path,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isRecording = true;
+      _isPreviewPlaying = false;
+      _recordSeconds = 0;
+      _audioFileName = fileName;
+    });
+
+    _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _recordSeconds++);
+      if (_recordSeconds >= _maxRecordSeconds) _stopRecording();
+    });
+  }
+
+  Future<void> _stopRecording() async {
+    _recordTimer?.cancel();
+    await _recorder.stop();
+    if (mounted) setState(() => _isRecording = false);
+  }
+
+  Future<void> _togglePreview() async {
+    if (_audioFileName == null || _isRecording) return;
+    if (_isPreviewPlaying) {
+      await _previewPlayer.stop();
+      if (mounted) setState(() => _isPreviewPlaying = false);
+      return;
+    }
+    try {
+      final path = await reminderAudioPath(_audioFileName!);
+      await _previewPlayer.play(DeviceFileSource(path));
+      if (mounted) setState(() => _isPreviewPlaying = true);
+    } catch (e) {
+      debugPrint("Error al reproducir el audio: $e");
+      if (mounted) {
+        showErrorSnack(context, "No se encontró el audio en este dispositivo");
+      }
+    }
+  }
+
+  String _formatSeconds(int seconds) {
+    final m = seconds ~/ 60;
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   Future<void> _saveReminder() async {
@@ -106,6 +224,14 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
       showErrorSnack(context, "Ingresa el monto del presupuesto");
       return;
     }
+    if (widget.isAudio && _audioFileName == null) {
+      showErrorSnack(context, "Graba el audio del recordatorio");
+      return;
+    }
+    if (_isRecording) {
+      showErrorSnack(context, "Detén la grabación antes de guardar");
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -137,9 +263,16 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
           date: (frequency == 'Una vez' || frequency == 'Mensual')
               ? _selectedDate
               : null,
+          audioFileName: _audioFileName,
           createdAt: original.createdAt,
           updatedAt: now,
         );
+
+        // Si se re-grabó, el audio original ya no se usa: se borra
+        if (original.audioFileName != null &&
+            original.audioFileName != _audioFileName) {
+          deleteReminderAudio(original.audioFileName!);
+        }
         _reminderRepo.update(updated).catchError((e) => debugPrint("Error al sincronizar recordatorio: $e"));
       } else {
         final newReminder = Reminder(
@@ -159,10 +292,12 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
           date: (frequency == 'Una vez' || frequency == 'Mensual')
               ? _selectedDate
               : null,
+          audioFileName: _audioFileName,
         );
         _reminderRepo.create(newReminder).catchError((e) => debugPrint("Error al sincronizar recordatorio: $e"));
       }
 
+      _saved = true; // el audio grabado ya tiene dueño: no se limpia en dispose
       if (mounted){
           widget.isEditing ? showSuccessSnack(context, "Recordatorio actualizado correctamente") : showSuccessSnack(context, "Recordatorio creado correctamente");
           Navigator.pop(context);
@@ -178,8 +313,9 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.isEditing ? "Editar Recordatorio" : "Crear Recordatorio";
-    final buttonText = widget.isEditing ? "Guardar Cambios" : "Crear Recordatorio";
+    final noun = widget.isAudio ? "Recordatorio de Voz" : "Recordatorio";
+    final title = widget.isEditing ? "Editar $noun" : "Crear $noun";
+    final buttonText = widget.isEditing ? "Guardar Cambios" : "Crear $noun";
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -199,15 +335,28 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Notas
-              const AppLabel(text: "Notas / Detalles"),
-              const SizedBox(height: 8),
-              AppTextField(
-                controller: notesController,
-                hint: "Detalles adicionales ...",
-                maxLines: 3,
-              ),
-              const SizedBox(height: 20),
+              // Grabado: audio en vez de notas escritas
+              if (widget.isAudio) ...[
+                const AppLabel(text: "Audio del Recordatorio"),
+                const SizedBox(height: 4),
+                const Text(
+                  "Máximo 2 minutos",
+                  style: TextStyle(color: AppColors.hint, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                _buildRecorderSection(),
+                const SizedBox(height: 20),
+              ] else ...[
+                // Notas
+                const AppLabel(text: "Notas / Detalles"),
+                const SizedBox(height: 8),
+                AppTextField(
+                  controller: notesController,
+                  hint: "Detalles adicionales ...",
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Frecuencia: cada una muestra SOLO los campos que usa
               const AppLabel(text: "Frecuencia"),
@@ -327,6 +476,77 @@ class _CreateReminderScreenState extends State<CreateReminderScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRecorderSection() {
+    final hasAudio = _audioFileName != null && !_isRecording;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          // Botón principal: micrófono (grabar) / cuadrado (detener)
+          GestureDetector(
+            onTap: _toggleRecording,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: _isRecording ? Colors.redAccent : AppColors.purplePrimary,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _isRecording ? Icons.stop : Icons.mic,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isRecording
+                      ? "Grabando... ${_formatSeconds(_recordSeconds)}"
+                      : hasAudio
+                          ? "Audio listo"
+                          : "Toca el micrófono para grabar",
+                  style: TextStyle(
+                    color: _isRecording ? Colors.redAccent : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (hasAudio) ...[
+                  const SizedBox(height: 4),
+                  const Text(
+                    "Vuelve a grabar para reemplazarlo",
+                    style: TextStyle(color: AppColors.hint, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (hasAudio)
+            IconButton(
+              onPressed: _togglePreview,
+              icon: Icon(
+                _isPreviewPlaying
+                    ? Icons.stop_circle_outlined
+                    : Icons.play_circle_outline,
+                color: AppColors.cyan,
+                size: 34,
+              ),
+              tooltip: _isPreviewPlaying ? "Detener" : "Escuchar",
+            ),
+        ],
       ),
     );
   }

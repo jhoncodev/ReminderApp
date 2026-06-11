@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Notificaciones locales: permiso de Android 13+ (se pide en runtime) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Recordatorios de voz: grabación de audio (se pide en runtime) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="Reminder App"
         android:name="${applicationName}"

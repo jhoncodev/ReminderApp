@@ -161,7 +161,10 @@ class _SharedTile extends StatelessWidget {
       case 'teacher':
         return Icons.person_outline;
       default:
-        return Icons.notifications_outlined;
+        // Recordatorio: con micrófono si viaja con audio (grabado)
+        return item.payload.containsKey('audioBase64')
+            ? Icons.mic
+            : Icons.notifications_outlined;
     }
   }
 

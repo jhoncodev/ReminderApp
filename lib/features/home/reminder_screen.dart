@@ -1,6 +1,16 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:audioplayers/audioplayers.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:record/record.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/app_feedback.dart';
+import 'package:reminder_app/core/utils/audio_paths.dart';
+import 'package:reminder_app/core/utils/date_helpers.dart';
+import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/share_sheet.dart';
 import 'package:reminder_app/core/widgets/status_views.dart';
@@ -18,7 +28,186 @@ class ReminderScreen extends StatefulWidget {
 class _ReminderScreenState extends State<ReminderScreen> {
   final _repo = ReminderRepository();
 
+  // Pestaña activa: false = Escritos, true = Grabados
+  bool _showRecorded = false;
+
+  // Un solo reproductor para toda la lista (tocar otro audio detiene el anterior)
+  final _player = AudioPlayer();
+  String? _playingId;
+
+  // Nota de voz rápida: mantener presionado el + en Grabados graba sin formulario
+  final _quickRecorder = AudioRecorder();
+  bool _quickRecording = false;
+  int _quickSeconds = 0;
+  Timer? _quickTimer;
+  String? _quickFileName;
+  static const _maxQuickSeconds = 120;
+
   static const _dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+  @override
+  void initState() {
+    super.initState();
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _playingId = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _quickTimer?.cancel();
+    _quickRecorder.dispose();
+    _player.dispose();
+    super.dispose();
+  }
+
+  // ── Nota de voz rápida ────────────────────────────────────────────────────
+
+  Future<void> _startQuickRecording() async {
+    if (_quickRecording) return;
+    if (!await _quickRecorder.hasPermission()) {
+      if (mounted) showErrorSnack(context, "Permiso de micrófono denegado");
+      return;
+    }
+
+    await _player.stop(); // no grabar mientras suena un audio
+    final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    final path = await reminderAudioPath(fileName);
+    // Calidad voz (32 kbps mono): permite compartir el audio por Firestore
+    await _quickRecorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        bitRate: 32000,
+        sampleRate: 22050,
+        numChannels: 1,
+      ),
+      path: path,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _quickRecording = true;
+      _quickSeconds = 0;
+      _quickFileName = fileName;
+      _playingId = null;
+    });
+
+    _quickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _quickSeconds++);
+      if (_quickSeconds >= _maxQuickSeconds) _finishQuickRecording();
+    });
+  }
+
+  Future<void> _finishQuickRecording() async {
+    if (!_quickRecording) return;
+    _quickTimer?.cancel();
+    await _quickRecorder.stop();
+
+    final fileName = _quickFileName;
+    final seconds = _quickSeconds;
+    if (mounted) setState(() => _quickRecording = false);
+    if (fileName == null) return;
+
+    // Soltó demasiado rápido: toque accidental, se descarta
+    if (seconds < 1) {
+      deleteReminderAudio(fileName);
+      if (mounted) {
+        showErrorSnack(context, "Mantén presionado el botón para grabar");
+      }
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      deleteReminderAudio(fileName);
+      return;
+    }
+
+    // Se guarda SIN programar (sin fecha): al editarla después,
+    // el formulario exigirá la fecha y recién ahí entra al Home/notificaciones
+    final now = DateTime.now();
+    final hour = formatTo12h(formatTo24h(TimeOfDay.fromDateTime(now)));
+    final voiceNote = Reminder(
+      userId: user.uid,
+      name: "Nota de voz ${formatShortDate(now)} $hour",
+      frequency: 'Una vez',
+      scheduleDays: const [],
+      createdAt: now,
+      updatedAt: now,
+      audioFileName: fileName,
+    );
+    _repo
+        .create(voiceNote)
+        .catchError((e) => debugPrint("Error al sincronizar nota de voz: $e"));
+
+    if (mounted) {
+      showSuccessSnack(context, "Nota de voz guardada, edítala para programarla");
+    }
+  }
+
+  String _formatSeconds(int seconds) {
+    final m = seconds ~/ 60;
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  // Compartir: si es grabado, el audio viaja en el payload como Base64
+  // (límite de Firestore: 1 MB por doc; base64 infla ~33%, de ahí los 700 KB)
+  Future<void> _shareReminder(Reminder reminder) async {
+    final payload = reminderPayload(reminder);
+
+    if (reminder.audioFileName != null) {
+      try {
+        final file = File(await reminderAudioPath(reminder.audioFileName!));
+        final bytes = await file.readAsBytes();
+        if (bytes.length > 700 * 1024) {
+          if (mounted) {
+            showErrorSnack(context, "Este audio es muy pesado para compartir");
+          }
+          return;
+        }
+        payload['audioBase64'] = base64Encode(bytes);
+      } catch (e) {
+        debugPrint("Error al leer el audio para compartir: $e");
+        if (mounted) {
+          showErrorSnack(context, "No se encontró el audio en este dispositivo");
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    showShareSheet(
+      context,
+      type: 'reminder',
+      typeLabel: reminder.isRecorded ? 'Recordatorio de Voz' : 'Recordatorio',
+      resourceTitle: reminder.name,
+      payload: payload,
+    );
+  }
+
+  Future<void> _togglePlay(Reminder reminder) async {
+    if (reminder.audioFileName == null) return;
+
+    if (_playingId == reminder.id) {
+      await _player.stop();
+      if (mounted) setState(() => _playingId = null);
+      return;
+    }
+
+    try {
+      final path = await reminderAudioPath(reminder.audioFileName!);
+      await _player.stop();
+      await _player.play(DeviceFileSource(path));
+      if (mounted) setState(() => _playingId = reminder.id);
+    } catch (e) {
+      debugPrint("Error al reproducir el audio: $e");
+      if (mounted) {
+        showErrorSnack(context, "No se encontró el audio en este dispositivo");
+      }
+    }
+  }
 
   String _formatDays(List<int> days) {
     if (days.isEmpty) return "Sin días";
@@ -66,6 +255,11 @@ class _ReminderScreenState extends State<ReminderScreen> {
           .catchError(
             (e) => debugPrint("Error al sincronizar la eliminación: $e"),
           );
+      // El audio local ya no tiene dueño: se borra también
+      if (reminder.audioFileName != null) {
+        if (_playingId == reminder.id) _player.stop();
+        deleteReminderAudio(reminder.audioFileName!);
+      }
       if (!mounted) return;
       showSuccessSnack(context, "Recordatorio eliminado");
     } catch (e) {
@@ -78,7 +272,10 @@ class _ReminderScreenState extends State<ReminderScreen> {
   void _openCreate() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CreateReminderScreen()),
+      MaterialPageRoute(
+        // El + crea según la pestaña activa: escrito o grabado
+        builder: (_) => CreateReminderScreen(audioMode: _showRecorded),
+      ),
     );
   }
 
@@ -91,78 +288,216 @@ class _ReminderScreenState extends State<ReminderScreen> {
     );
   }
 
+  // Pestañas Escritos | Grabados (mismo estilo que el selector de frecuencia)
+  Widget _buildTypeTabs() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+      child: Row(
+        children: [
+          _typeTab("Escritos", false),
+          const SizedBox(width: 8),
+          _typeTab("Grabados", true),
+        ],
+      ),
+    );
+  }
+
+  Widget _typeTab(String label, bool recorded) {
+    final selected = _showRecorded == recorded;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _showRecorded = recorded),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.purplePrimary : AppColors.inputFill,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                recorded ? Icons.mic : Icons.edit_note,
+                size: 18,
+                color: selected ? Colors.white : Colors.grey,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.grey,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const DarkAppBar(title: "Recordatorios"),
-      body: StreamBuilder<List<Reminder>>(
-        stream: _repo.watchAll(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const AppLoadingView();
-          }
-
-          if (snapshot.hasError) {
-            return AppErrorView(
-              message: "No se pudieron cargar los recordatorios",
-              error: snapshot.error,
-            );
-          }
-
-          final reminders = snapshot.data ?? [];
-          if (reminders.isEmpty) {
-            return const _EmptyState();
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.all(20),
-            itemCount: reminders.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (_, index) => _ReminderTile(
-              reminder: reminders[index],
-              formatDays: _formatDays,
-              onEdit: () => _openEdit(reminders[index]),
-              onDelete: () => _confirmDelete(reminders[index]),
+      body: Column(
+        children: [
+          _buildTypeTabs(),
+          if (_quickRecording)
+            Container(
+              margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.15),
+                border: Border.all(color: Colors.redAccent),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.mic, color: Colors.redAccent),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Grabando nota de voz... ${_formatSeconds(_quickSeconds)}",
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    "Suelta para guardar",
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ],
+              ),
+            )
+          else if (_showRecorded)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Text(
+                "Tip: mantén presionado el botón + para grabar una nota de voz rápida",
+                style: TextStyle(color: AppColors.hint, fontSize: 12),
+              ),
             ),
-          );
-        },
+          Expanded(
+            child: StreamBuilder<List<Reminder>>(
+              stream: _repo.watchAll(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const AppLoadingView();
+                }
+
+                if (snapshot.hasError) {
+                  return AppErrorView(
+                    message: "No se pudieron cargar los recordatorios",
+                    error: snapshot.error,
+                  );
+                }
+
+                final reminders = (snapshot.data ?? [])
+                    .where((r) => r.isRecorded == _showRecorded)
+                    .toList();
+                if (reminders.isEmpty) {
+                  return _EmptyState(recorded: _showRecorded);
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: reminders.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (_, index) => _ReminderTile(
+                    reminder: reminders[index],
+                    formatDays: _formatDays,
+                    isPlaying: _playingId == reminders[index].id,
+                    onPlay: () => _togglePlay(reminders[index]),
+                    onShare: () => _shareReminder(reminders[index]),
+                    onEdit: () => _openEdit(reminders[index]),
+                    onDelete: () => _confirmDelete(reminders[index]),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.purplePrimary,
-        foregroundColor: Colors.white,
-        onPressed: _openCreate,
-        child: const Icon(Icons.add),
+      floatingActionButton: _showRecorded
+          ? _buildQuickRecordFab()
+          : FloatingActionButton(
+              backgroundColor: AppColors.purplePrimary,
+              foregroundColor: Colors.white,
+              onPressed: _openCreate,
+              child: const Icon(Icons.add),
+            ),
+    );
+  }
+
+  // FAB dual de Grabados: toque corto = formulario completo;
+  // mantener presionado = grabar nota de voz rápida (soltar = guardar)
+  Widget _buildQuickRecordFab() {
+    return GestureDetector(
+      onTap: _quickRecording ? null : _openCreate,
+      onLongPressStart: (_) => _startQuickRecording(),
+      onLongPressEnd: (_) => _finishQuickRecording(),
+      onLongPressCancel: _finishQuickRecording,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: _quickRecording ? Colors.redAccent : AppColors.purplePrimary,
+          shape: BoxShape.circle,
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black45,
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(
+          _quickRecording ? Icons.mic : Icons.add,
+          color: Colors.white,
+        ),
       ),
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final bool recorded;
+  const _EmptyState({this.recorded = false});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle, color: AppColors.purplePrimary, size: 64),
-            SizedBox(height: 16),
+            Icon(
+              recorded ? Icons.mic_none : Icons.check_circle,
+              color: AppColors.purplePrimary,
+              size: 64,
+            ),
+            const SizedBox(height: 16),
             Text(
-              "Aún no tienes recordatorios",
-              style: TextStyle(
+              recorded
+                  ? "Aún no tienes recordatorios grabados"
+                  : "Aún no tienes recordatorios",
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              "Toca el botón + para crear tu primer recordatorio.",
-              style: TextStyle(color: AppColors.hint, fontSize: 14),
+              recorded
+                  ? "Toca el botón + para grabar tu primer recordatorio de voz."
+                  : "Toca el botón + para crear tu primer recordatorio.",
+              style: const TextStyle(color: AppColors.hint, fontSize: 14),
               textAlign: TextAlign.center,
             ),
           ],
@@ -175,12 +510,18 @@ class _EmptyState extends StatelessWidget {
 class _ReminderTile extends StatelessWidget {
   final Reminder reminder;
   final String Function(List<int>) formatDays;
+  final bool isPlaying;
+  final VoidCallback onPlay;
+  final VoidCallback onShare;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _ReminderTile({
     required this.reminder,
     required this.formatDays,
+    required this.isPlaying,
+    required this.onPlay,
+    required this.onShare,
     required this.onEdit,
     required this.onDelete,
   });
@@ -219,14 +560,18 @@ class _ReminderTile extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => showShareSheet(
-              context,
-              type: 'reminder',
-              typeLabel: 'Recordatorio',
-              resourceTitle: reminder.name,
-              payload: reminderPayload(reminder),
+          if (reminder.isRecorded)
+            IconButton(
+              onPressed: onPlay,
+              icon: Icon(
+                isPlaying ? Icons.stop_circle : Icons.play_circle_fill,
+                color: AppColors.green,
+                size: 30,
+              ),
+              tooltip: isPlaying ? "Detener" : "Escuchar",
             ),
+          IconButton(
+            onPressed: onShare,
             icon: const Icon(Icons.share_outlined, color: AppColors.cyan),
             tooltip: "Compartir",
           ),

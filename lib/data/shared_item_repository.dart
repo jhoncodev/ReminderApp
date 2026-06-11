@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:reminder_app/core/utils/audio_paths.dart';
 import 'package:reminder_app/models/shared_item.dart';
 
 class SharedItemRepository {
@@ -61,6 +65,17 @@ class SharedItemRepository {
   // Aceptar: crea la copia en MI colección correspondiente y borra el compartido
   Future<void> accept(SharedItem item) async {
     final data = Map<String, dynamic>.from(item.payload);
+
+    // Audio compartido (recordatorio de voz): viaja como Base64 dentro del
+    // payload y aquí se materializa como archivo local del receptor
+    final audioBase64 = data.remove('audioBase64') as String?;
+    if (audioBase64 != null) {
+      final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final file = File(await reminderAudioPath(fileName));
+      await file.writeAsBytes(base64Decode(audioBase64));
+      data['audioFileName'] = fileName;
+    }
+
     data['userId'] = _currentUserId;
     data['createdAt'] = Timestamp.now();
     data['updatedAt'] = Timestamp.now();

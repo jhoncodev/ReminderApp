@@ -49,11 +49,15 @@ class NotificationService {
   String? _activeUid;
 
   // Avisos programados usan ids 0..N (se cancelan al reprogramar);
-  // los de compartidos usan ids desde 900000 para no chocar
+  // los instantáneos usan ids desde 800000 y los de compartidos desde 900000
   int _lastScheduledCount = 0;
+  int _instantNotificationId = 800000;
   int _inboxNotificationId = 900000;
   final Set<String> _knownSharedIds = {};
   bool _inboxPrimed = false;
+  // Ocurrencias ya avisadas de inmediato: evita re-notificar lo mismo
+  // cada vez que un cambio de datos dispara la reprogramación
+  final Set<String> _instantNotified = {};
 
   static const _daysAhead = 7;
 
@@ -172,6 +176,7 @@ class NotificationService {
     _activeUid = null;
     _knownSharedIds.clear();
     _inboxPrimed = false;
+    _instantNotified.clear();
     _lastScheduledCount = 0;
     if (_initialized) {
       _plugin
@@ -236,6 +241,44 @@ class NotificationService {
       );
 
       final isCourse = occ.item.type == ScheduleItemType.course;
+
+      // Caso límite: el evento aún no empieza pero TODOS los avisos ya
+      // quedaron en el pasado (ej. lo creaste faltando 3 min con avisos
+      // de 15 y 5) -> un único aviso inmediato, sin repetirlo en
+      // reprogramaciones posteriores
+      final allLeadsMissed = start.isAfter(now) &&
+          _leadTimes.every(
+            (lead) => !start.subtract(Duration(minutes: lead)).isAfter(now),
+          );
+      if (allLeadsMissed) {
+        final key = occ.item.id;
+        if (!_instantNotified.contains(key)) {
+          _instantNotified.add(key);
+          final minutesLeft = start.difference(now).inMinutes;
+          final timeText = minutesLeft < 1
+              ? "en menos de un minuto"
+              : "en $minutesLeft min";
+          await _plugin.show(
+            _instantNotificationId++,
+            occ.item.title,
+            isCourse
+                ? "Tu curso empieza $timeText (${formatTo12h(occ.item.time)})"
+                : "Tu recordatorio es $timeText (${formatTo12h(occ.item.time)})",
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                'avisos_channel',
+                'Avisos de cursos y recordatorios',
+                channelDescription:
+                    'Notificaciones antes de cada curso o recordatorio con hora',
+                importance: Importance.high,
+                priority: Priority.high,
+              ),
+            ),
+          );
+        }
+        continue;
+      }
+
       for (final lead in _leadTimes) {
         final fireAt = start.subtract(Duration(minutes: lead));
         if (!fireAt.isAfter(now)) continue;

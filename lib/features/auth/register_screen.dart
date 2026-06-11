@@ -110,9 +110,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
+      
+      await userCredential.user!.sendEmailVerification();
+      await FirebaseAuth.instance.signOut();
 
       if (mounted) {
-        showSuccessSnack(context, "Cuenta creada con éxito");
+        showSuccessSnack(context, "Cuenta creada. Revisa tu correo para verificarla");
 
         // Limpiar campos
         fullNameController.clear();

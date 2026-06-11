@@ -30,45 +30,49 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loginWithGoogle() async {
-  setState(() => _isLoading = true);
-  try {
-    // Servicio de autenticación con Google
-    final authService = AuthService(); 
-    final userCredential = await authService.signInWithGoogle();
-    
-    // Si fue exitoso y el usuario no canceló el prompt
-    if (userCredential != null && mounted) {
-      showSuccessSnack(context, "Inicio de sesión con Google exitoso");
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    }
-  } catch (e) {
-    debugPrint("Error en Google Sign-In: $e");
-    if(!mounted) return;
-      final message = e is FirebaseAuthException ? authErrorMessage(e) : "No se pudo iniciar sesión con Google";
-      showErrorSnack(context, message);
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
-  }
-}
-
-  Future<void> _loginUser() async {
     setState(() => _isLoading = true);
     try {
-      // 1. Autenticar al usuario con Firebase
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-      if (mounted) {
-        showSuccessSnack(context, "Inicio de sesión exitoso");
+      // Servicio de autenticación con Google
+      final authService = AuthService(); 
+      final userCredential = await authService.signInWithGoogle();
+      
+      // Si fue exitoso y el usuario no canceló el prompt
+      if (userCredential != null && mounted) {
+        showSuccessSnack(context, "Inicio de sesión con Google exitoso");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
+    } catch (e) {
+      debugPrint("Error en Google Sign-In: $e");
+      if(!mounted) return;
+        final message = e is FirebaseAuthException ? authErrorMessage(e) : "No se pudo iniciar sesión con Google";
+        showErrorSnack(context, message);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loginUser() async {
+    setState(() => _isLoading = true);
+    try {
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text.trim(), password: passwordController.text.trim(),);
+
+      final user = userCredential.user;
+      if (user != null && !user.emailVerified){
+        if (mounted) await _showVerificationDialog(user);
+        return;
+      }
+
+      if (mounted){
+        showSuccessSnack(context, "Inicio de sesión exitoso");
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => const HomeScreen())
+        );
+      }
+
     } on FirebaseAuthException catch (e) {
       debugPrint("Error de login: ${e.code}");
 
@@ -81,6 +85,151 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _showVerificationDialog(User user) async {
+    await showDialog(
+      context: context, 
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text(
+          "Verifica Tu Correo",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          "Tu correo aún no está verificado. Revisa tu bandeja (y la carpeta de spam) y toca el enlace antes de iniciar sesión.",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              try{
+                await user.sendEmailVerification();
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                
+                if (mounted) {
+                  showSuccessSnack(context, "Correo de verificación reenviado");
+                }
+              } on FirebaseAuthException catch (e){
+                debugPrint("Error al reenviar verificación: ${e.code}");
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                if (mounted) showErrorSnack(context, authErrorMessage(e));
+              }
+            }, 
+            child: const Text(
+              "Reenviar Correo",
+              style: TextStyle(color: AppColors.purplePrimary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext), 
+            child: const Text("Entendido", style: TextStyle(color: Colors.white70)),
+          ),
+        ],
+      ),
+    );
+
+    // Sin la verificación no hay sesión: se cierra al salir del dialogo.
+    // (Se cierra después porque reenviar el correo requiere la sesión viva.)
+    await FirebaseAuth.instance.signOut();
+  }
+
+  void _showPasswordResetSheet() {
+    // Prellenamos con lo que el usuario ya escribió en el login
+    final resetController = TextEditingController(
+      text: emailController.text.trim(),
+    );
+    String? errorMessage;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            // Sube el contenido cuando aparece el teclado
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                "Recuperar Contraseña",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              const Text(
+                "Te enviaremos un enlace para restablecerla.",
+                style: TextStyle(color: Colors.white54, fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+
+              const AppLabel(text: "Correo electrónico"),
+              const SizedBox(height: 8),
+
+              AppTextField(
+                controller: resetController,
+                hint: "apellido@gmail.com",
+              ),
+
+              // Error inline: visible dentro del modal (un SnackBar quedaría oculto detrás)
+              if (errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  errorMessage!,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                ),
+              ],
+              const SizedBox(height: 24),
+
+              PrimaryGradientButton(
+                text: "Enviar Enlace",
+                glow: true,
+                onPressed: () async {
+                  final email = resetController.text.trim();
+                  if (email.isEmpty) {
+                    setSheetState(() => errorMessage = "Escribe tu correo electrónico");
+                    return;
+                  }
+                  try {
+                    await AuthService().sendPasswordReset(email);
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                    if (!mounted) return;
+                    showSuccessSnack(
+                      context,
+                      "Si existe una cuenta con ese correo, te llegará un enlace",
+                    );
+                  } on FirebaseAuthException catch (e) {
+                    debugPrint("Error en reset de contraseña: ${e.code}");
+                    if (sheetContext.mounted) {
+                      setSheetState(() => errorMessage = authErrorMessage(e));
+                    }
+                  } catch (e) {
+                    debugPrint("Error en reset de contraseña: $e");
+                    if (sheetContext.mounted) {
+                      setSheetState(() => errorMessage = "Ocurrió un error, intenta de nuevo");
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -153,7 +302,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    // TODO: implementar recuperar contraseña
+                    _showPasswordResetSheet();
                   },
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,

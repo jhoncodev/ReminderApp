@@ -62,6 +62,12 @@ class AuthService {
     await GoogleSignIn.instance.disconnect();
     await _auth.signOut();
   }
+
+  // Envía el correo de restablecimiento de contraseña
+  // Firebase no revela si el correo existe
+  Future<void> sendPasswordReset(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
 }
 
 // Traducción de codigos de FirebaseAuthException a mensajes para el usuario.

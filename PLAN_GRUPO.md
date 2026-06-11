@@ -443,6 +443,7 @@ Sesión de cierre de bugs tras los commits del 2026-06-05. Todo verificado con `
 - `lib/core/utils/app_feedback.dart`: `showSuccessSnack(context, msg)` / `showErrorSnack(context, msg)`. Único estilo de SnackBar en la app.
 - `lib/core/widgets/status_views.dart`: `AppLoadingView` y `AppErrorView(message, error)` para StreamBuilder/FutureBuilder.
 - **Regla: jamás mostrar `$e` ni `${snapshot.error}` al usuario.** Mensaje en español por el helper + `debugPrint` del detalle técnico. Nada de `ScaffoldMessenger` directo ni `print`.
+- **Regla: en modales (bottomsheets/diálogos) los errores se muestran inline** (texto dentro del propio modal, con `StatefulBuilder` si hace falta estado local); un SnackBar disparado con el modal abierto queda oculto detrás. SnackBar solo después de cerrar el modal (ej. éxito → `pop` → snack). Precedentes: `session_editor_sheet.dart` y el sheet de recuperar contraseña en `login_screen.dart`.
 - Colores semánticos `AppColors.success` / `AppColors.error`.
 
 ### Errores de autenticación en español

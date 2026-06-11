@@ -235,8 +235,9 @@ class Classroom {
 - ~~Entidad `Note`~~ — ya implementada (Apuntes).
 - ~~Navegación temporal en Horario~~ — ya implementada (flechas `< >` + validación por día).
 
+- [x] **Entidad `Teacher`** (2026-06-11): modelo (`name` + `email?` + `phone?`) + `TeacherRepository` (sin orderBy en query — ordena por nombre en cliente para NO necesitar índice compuesto) + pantallas de gestión (`teacher_screen.dart` / `create_teacher_screen.dart`, acceso desde el FAB del Home). Vínculo `teacherId` opcional en Course con toggle+selector en el formulario (mismo patrón que periodo). Nombre del profesor visible en el tile del curso y en el detalle de sesión del Horario. Eliminar un profesor deja los cursos "sin profesor" (el vínculo huérfano simplemente no se muestra). Bonus fix: editar un curso ya no resetea su color (faltaba prellenar `_selectedColor`).
+
 **Pendiente (roadmap final decidido el 2026-06-11):**
-1. **Entidad `Teacher`** (decisión confirmada: entidad con CRUD, no campo de texto): modelo + repo + pantalla de gestión, vínculo opcional `teacherId` en Course, nombre del profesor visible en el tile del curso y en el detalle de sesión del Horario.
 2. **Paquete "validaciones al guardar"** (independientes pero se hacen juntas):
    - Detección de conflictos de horario al crear/editar curso (comparar rangos de horas por día contra los demás cursos del mismo periodo; advertencia, no bloqueo).
    - Validación al editar fechas de un periodo con cursos: advertencia "Este periodo tiene N cursos; cambiar las fechas puede ocultarlos del inicio. ¿Continuar?".

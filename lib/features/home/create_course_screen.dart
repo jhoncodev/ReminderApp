@@ -12,9 +12,11 @@ import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
 import 'package:reminder_app/core/widgets/session_editor_sheet.dart';
 import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/data/period_repository.dart';
+import 'package:reminder_app/data/teacher_repository.dart';
 import 'package:reminder_app/models/course.dart';
 import 'package:reminder_app/models/course_session.dart';
 import 'package:reminder_app/models/period.dart';
+import 'package:reminder_app/models/teacher.dart';
 
 class CreateCourseScreen extends StatefulWidget {
   final Course? course;
@@ -29,12 +31,15 @@ class CreateCourseScreen extends StatefulWidget {
 class _CreateCourseScreenState extends State<CreateCourseScreen> {
   final _courseRepo = CourseRepository();
   final _periodRepo = PeriodRepository();
+  final _teacherRepo = TeacherRepository();
   final nameController = TextEditingController();
   final noteController = TextEditingController();
   int _selectedColor = 0xFF6C63FF;
 
   bool isAcademicPeriodEnabled = false;
   Period? selectedPeriod;
+  bool isTeacherEnabled = false;
+  Teacher? selectedTeacher;
   List<CourseSession> _sessions = [];
 
   bool _isSaving = false;
@@ -58,12 +63,21 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     nameController.text = existing.name;
     noteController.text = existing.note ?? '';
     _sessions = List.from(existing.sessions);
+    _selectedColor = existing.colorCode; // Sin esto, editar reseteaba el color
 
     if (existing.academicPeriodId != null) {
       isAcademicPeriodEnabled = true;
       _periodRepo.getById(existing.academicPeriodId!).then((period) {
         if (!mounted) return;
         setState(() => selectedPeriod = period);
+      });
+    }
+
+    if (existing.teacherId != null) {
+      isTeacherEnabled = true;
+      _teacherRepo.getById(existing.teacherId!).then((teacher) {
+        if (!mounted) return;
+        setState(() => selectedTeacher = teacher);
       });
     }
   }
@@ -117,6 +131,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     }
 
     final periodId = isAcademicPeriodEnabled ? selectedPeriod?.id : null;
+    final teacherId = isTeacherEnabled ? selectedTeacher?.id : null;
     final note = noteController.text.trim().isEmpty
         ? null
         : noteController.text.trim();
@@ -135,6 +150,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           name: name,
           sessions: _sessions,
           note: note,
+          teacherId: teacherId,
           colorCode: _selectedColor,
           createdAt: original.createdAt,
           updatedAt: now,
@@ -148,6 +164,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           name: name,
           sessions: _sessions,
           note: note,
+          teacherId: teacherId,
           colorCode: _selectedColor,
           createdAt: now,
           updatedAt: now,
@@ -268,6 +285,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               _buildAcademicPeriodSection(),
               const SizedBox(height: 24),
 
+              _buildTeacherSection(),
+              const SizedBox(height: 24),
+
               _buildSessionsSection(),
               const SizedBox(height: 24),
 
@@ -367,6 +387,152 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               style: const TextStyle(color: AppColors.hint, fontSize: 12),
             ),
           ],
+        ],
+      ],
+    );
+  }
+
+  Future<void> _openTeacherSelector() async {
+    final result = await showModalBottomSheet<Teacher>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: StreamBuilder<List<Teacher>>(
+            stream: _teacherRepo.watchAll(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.purplePrimary,
+                    ),
+                  ),
+                );
+              }
+
+              final teachers = snapshot.data ?? [];
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Selecciona un profesor",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (teachers.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Text(
+                        "Aún no tienes profesores registrados. Ve a Profesores para crear uno.",
+                        style: TextStyle(color: AppColors.hint),
+                      ),
+                    )
+                  else
+                    ...teachers.map(
+                      (teacher) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          teacher.name,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: teacher.email != null
+                            ? Text(
+                                teacher.email!,
+                                style: const TextStyle(color: AppColors.hint),
+                              )
+                            : null,
+                        onTap: () => Navigator.pop(ctx, teacher),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() => selectedTeacher = result);
+    }
+  }
+
+  Widget _buildTeacherSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppLabel(text: "Profesor"),
+                SizedBox(height: 4),
+                Text(
+                  "Vincula al profesor que dicta este curso",
+                  style: TextStyle(color: AppColors.hint, fontSize: 12),
+                ),
+              ],
+            ),
+            Transform.scale(
+              scale: 0.8,
+              child: Switch(
+                value: isTeacherEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    isTeacherEnabled = value;
+                    if (!value) selectedTeacher = null;
+                  });
+                },
+                activeThumbColor: AppColors.purplePrimary,
+              ),
+            ),
+          ],
+        ),
+        if (isTeacherEnabled) ...[
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _openTeacherSelector,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+              decoration: BoxDecoration(
+                color: AppColors.inputFill,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selectedTeacher?.name ?? "Selecciona un profesor",
+                      style: TextStyle(
+                        color: selectedTeacher != null
+                            ? Colors.white
+                            : AppColors.hint,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: AppColors.purplePrimary,
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ],
     );

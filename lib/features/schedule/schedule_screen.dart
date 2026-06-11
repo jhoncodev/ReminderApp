@@ -9,6 +9,8 @@ import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
 import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/data/period_repository.dart';
+import 'package:reminder_app/data/teacher_repository.dart';
+import 'package:reminder_app/models/teacher.dart';
 import 'package:reminder_app/models/course.dart';
 import 'package:reminder_app/models/course_session.dart';
 import 'package:reminder_app/models/period.dart';
@@ -613,6 +615,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             _detailRow(Icons.today_rounded, dayLabel),
             _detailRow(Icons.access_time_rounded, '${formatTo12h(entry.session.startTime)} – ${formatTo12h(entry.session.endTime)}'),
             if (entry.session.roomName != null) _detailRow(Icons.room_rounded, entry.session.roomName!),
+            // Profesor vinculado: se consulta por id al abrir el detalle (cache offline)
+            if (entry.course.teacherId != null)
+              FutureBuilder<Teacher?>(
+                future: TeacherRepository().getById(entry.course.teacherId!),
+                builder: (context, snapshot) {
+                  final teacher = snapshot.data;
+                  if (teacher == null) return const SizedBox.shrink();
+                  return _detailRow(Icons.person_outline, teacher.name);
+                },
+              ),
             if (entry.course.note != null && entry.course.note!.isNotEmpty)
               _detailRow(Icons.notes_rounded, entry.course.note!),
             const SizedBox(height: 24),

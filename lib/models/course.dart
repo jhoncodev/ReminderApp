@@ -8,6 +8,7 @@ class Course {
   final String name;
   final List<CourseSession> sessions;
   final String? note;
+  final String? teacherId; // FK opcional a Teacher
   final int colorCode; // Color del curso en ARGB, ej. 0xFF6C63FF
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -19,6 +20,7 @@ class Course {
     required this.name,
     required this.sessions,
     this.note,
+    this.teacherId,
     required this.colorCode,
     required this.createdAt,
     required this.updatedAt
@@ -40,6 +42,7 @@ class Course {
           .map((e) => CourseSession.fromMap(e as Map<String, dynamic>))
           .toList(),
       note: data['note'] as String?,
+      teacherId: data['teacherId'] as String?,
       colorCode: data['colorCode'] as int? ?? 0xFF6C63FF,
       // Timestamp? permite docs viejos sin fecha; si falta, fallback a DateTime.now()
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -56,6 +59,7 @@ class Course {
       'name': name,
       'sessions': sessions.map((s) => s.toMap()).toList(),
       if (note != null) 'note': note,
+      if (teacherId != null) 'teacherId': teacherId,
       'colorCode': colorCode,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt)

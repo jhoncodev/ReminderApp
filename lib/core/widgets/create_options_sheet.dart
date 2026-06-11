@@ -3,6 +3,7 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/features/home/reminder_screen.dart';
 import 'package:reminder_app/features/home/course_screen.dart';
 import 'package:reminder_app/features/home/period_screen.dart';
+import 'package:reminder_app/features/home/teacher_screen.dart';
 import 'package:reminder_app/features/note/notes_screen.dart';
 
 class CreateOptionsSheet {
@@ -95,6 +96,20 @@ class _SheetContent extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const PeriodScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+
+            _OptionCard(
+              icon: Icons.person,
+              iconBackground: AppColors.pink,
+              title: "Profesor",
+              subtitle: "Tus docentes, vinculables a cursos",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TeacherScreen()),
                 );
               },
             ),

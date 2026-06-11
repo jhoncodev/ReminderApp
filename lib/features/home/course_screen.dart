@@ -5,7 +5,10 @@ import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/core/widgets/share_sheet.dart';
 import 'package:reminder_app/core/widgets/status_views.dart';
+import 'dart:async';
+
 import 'package:reminder_app/data/course_repository.dart';
+import 'package:reminder_app/data/teacher_repository.dart';
 import 'package:reminder_app/features/grade/grade_screen.dart';
 import 'package:reminder_app/features/home/create_course_screen.dart';
 import 'package:reminder_app/models/course.dart';
@@ -21,7 +24,34 @@ class CourseScreen extends StatefulWidget {
 class _CourseScreenState extends State<CourseScreen> {
   final _repo = CourseRepository();
 
+  // Mapa id -> nombre de profesor para mostrarlo en cada tile sin N consultas
+  Map<String, String> _teacherNames = {};
+  StreamSubscription? _teachersSub;
+
   static const _dayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+  @override
+  void initState() {
+    super.initState();
+    _teachersSub = TeacherRepository().watchAll().listen(
+      (teachers) {
+        if (!mounted) return;
+        setState(() {
+          _teacherNames = {
+            for (final t in teachers)
+              if (t.id != null) t.id!: t.name,
+          };
+        });
+      },
+      onError: (e) => debugPrint("Error al cargar profesores: $e"),
+    );
+  }
+
+  @override
+  void dispose() {
+    _teachersSub?.cancel();
+    super.dispose();
+  }
 
   String _formatSessions(List<CourseSession> sessions) {
     if (sessions.isEmpty) return "Sin sesiones";
@@ -143,6 +173,7 @@ class _CourseScreenState extends State<CourseScreen> {
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (_, index) => _CourseTile(
               course: courses[index],
+              teacherName: _teacherNames[courses[index].teacherId],
               formatSessions: _formatSessions,
               onViewGrades: () => _openGrades(courses[index]),
               onEdit: () => _openEdit(courses[index]),
@@ -197,6 +228,7 @@ class _EmptyState extends StatelessWidget {
 
 class _CourseTile extends StatelessWidget {
   final Course course;
+  final String? teacherName;
   final String Function(List<CourseSession>) formatSessions;
   final VoidCallback onViewGrades;
   final VoidCallback onEdit;
@@ -204,6 +236,7 @@ class _CourseTile extends StatelessWidget {
 
   const _CourseTile({
     required this.course,
+    this.teacherName,
     required this.formatSessions,
     required this.onViewGrades,
     required this.onEdit,
@@ -237,6 +270,31 @@ class _CourseTile extends StatelessWidget {
                   formatSessions(course.sessions),
                   style: const TextStyle(color: AppColors.hint, fontSize: 12),
                 ),
+                if (teacherName != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.person_outline,
+                        color: AppColors.hint,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          teacherName!,
+                          style: const TextStyle(
+                            color: AppColors.hint,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

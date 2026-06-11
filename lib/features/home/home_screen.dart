@@ -4,7 +4,9 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
 import 'package:reminder_app/core/widgets/create_options_sheet.dart';
 import 'package:reminder_app/core/widgets/schedule_item_card.dart';
+import 'package:reminder_app/features/home/notification_settings_sheet.dart';
 import 'package:reminder_app/features/home/upcoming_screen.dart';
+import 'package:reminder_app/services/notification_service.dart';
 import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/data/reminder_repository.dart';
@@ -44,6 +46,9 @@ class _HomeScreen extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadCurrentUser();
+
+    // Arranca el programador de notificaciones del usuario actual
+    NotificationService.instance.start();
 
     _coursesStream = _courseRepository.watchAll();
     _remindersStream = _reminderRepository.watchAll();
@@ -92,7 +97,16 @@ class _HomeScreen extends State<HomeScreen> {
     }
   }
 
+  Future<void> _openNotificationSettings() async {
+    // Carga la config actual una vez y abre el sheet con una copia editable
+    final current = await NotificationService.instance.watchLeadTimes().first;
+    if (!mounted) return;
+    showNotificationSettingsSheet(context, current);
+  }
+
   Future<void> _logout() async {
+    // Sin sesión no hay avisos: detiene el programador y borra lo agendado
+    NotificationService.instance.stop();
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
     Navigator.pushReplacement(
@@ -282,7 +296,8 @@ class _HomeScreen extends State<HomeScreen> {
         ),
         IconButton(
           icon: const Icon(Icons.notifications, color: AppColors.purpleLight),
-          onPressed: () {},
+          tooltip: "Configurar avisos",
+          onPressed: _openNotificationSettings,
         ),
       ],
     );

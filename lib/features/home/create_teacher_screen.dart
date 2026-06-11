@@ -63,6 +63,17 @@ class _CreateTeacherScreenState extends State<CreateTeacherScreen> {
     final email = emailController.text.trim();
     final phone = phoneController.text.trim();
 
+    // Validaciones de formato (solo si se llenaron, son opcionales)
+    if (email.isNotEmpty &&
+        !RegExp(r'^[\w.+-]+@[\w-]+\.[\w.-]+$').hasMatch(email)) {
+      showErrorSnack(context, "El correo no tiene un formato válido");
+      return;
+    }
+    if (phone.isNotEmpty && !RegExp(r'^9\d{8}$').hasMatch(phone)) {
+      showErrorSnack(context, "El teléfono debe tener 9 dígitos y empezar con 9");
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     final now = DateTime.now();

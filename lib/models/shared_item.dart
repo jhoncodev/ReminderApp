@@ -60,6 +60,8 @@ class SharedItem {
         return 'Apunte';
       case 'period':
         return 'Periodo';
+      case 'teacher':
+        return 'Profesor';
       default:
         return 'Recordatorio';
     }

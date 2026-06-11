@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/share_sheet.dart';
 import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/teacher_repository.dart';
 import 'package:reminder_app/features/home/create_teacher_screen.dart';
@@ -205,6 +206,17 @@ class _TeacherTile extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            onPressed: () => showShareSheet(
+              context,
+              type: 'teacher',
+              typeLabel: 'Profesor',
+              resourceTitle: teacher.name,
+              payload: teacherPayload(teacher),
+            ),
+            icon: const Icon(Icons.share_outlined, color: AppColors.cyan),
+            tooltip: "Compartir",
           ),
           IconButton(
             onPressed: onEdit,

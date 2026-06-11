@@ -158,6 +158,8 @@ class _SharedTile extends StatelessWidget {
         return Icons.note_alt_outlined;
       case 'period':
         return Icons.calendar_month;
+      case 'teacher':
+        return Icons.person_outline;
       default:
         return Icons.notifications_outlined;
     }

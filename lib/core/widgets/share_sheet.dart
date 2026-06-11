@@ -12,6 +12,7 @@ import 'package:reminder_app/models/course.dart';
 import 'package:reminder_app/models/note.dart';
 import 'package:reminder_app/models/period.dart';
 import 'package:reminder_app/models/reminder.dart';
+import 'package:reminder_app/models/teacher.dart';
 
 // Payloads: copia de los datos SIN userId ni ids de vínculos
 Map<String, dynamic> reminderPayload(Reminder r) => {
@@ -44,6 +45,12 @@ Map<String, dynamic> periodPayload(Period p) => {
   'startDate': Timestamp.fromDate(p.startDate),
   'endDate': Timestamp.fromDate(p.endDate),
   'isArchived': false,
+};
+
+Map<String, dynamic> teacherPayload(Teacher t) => {
+  'name': t.name,
+  if (t.email != null) 'email': t.email,
+  if (t.phone != null) 'phone': t.phone,
 };
 
 // Sheet de envío

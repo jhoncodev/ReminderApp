@@ -82,6 +82,8 @@ class SharedItemRepository {
         return 'notes';
       case 'period':
         return 'periods';
+      case 'teacher':
+        return 'teachers';
       default:
         return 'reminders';
     }

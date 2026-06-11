@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/picker_theme.dart';
 import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/models/course_session.dart';
 
@@ -114,18 +115,7 @@ class _SessionEditorSheetState extends State<SessionEditorSheet>{
     final picked = await showTimePicker(
       context: context, 
       initialTime: (isStart ? _startTime : _endTime) ?? TimeOfDay.now(),
-      builder: (context, child) => Theme(
-        data: ThemeData.dark().copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.purplePrimary,
-            surface: AppColors.surface,
-          ),
-          dialogTheme: const DialogThemeData(
-            backgroundColor: AppColors.surface,
-          ),
-        ), 
-        child: child!,
-      ),
+      builder: buildDarkPicker,
     );
     
     if(picked == null) return;

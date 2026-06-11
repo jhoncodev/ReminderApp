@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:reminder_app/app.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/widgets/app_label.dart';
 import 'package:reminder_app/core/widgets/app_password_field.dart';
 import 'package:reminder_app/core/widgets/app_text_field.dart';
+import 'package:reminder_app/core/widgets/avatar_selector.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
+import 'package:reminder_app/data/user_repository.dart';
 import 'package:reminder_app/features/auth/register_screen.dart';
 import 'package:reminder_app/features/home/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -29,6 +32,62 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _showAvatarPickerSheet() async {
+    // Contexto raíz: sobrevive aunque AuthGate ya haya cambiado Login por Home
+    final rootContext = rootNavigatorKey.currentContext;
+    if(rootContext == null) return;
+
+    await showModalBottomSheet(
+      context: rootContext, 
+      backgroundColor: AppColors.background,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Elige tu Avatar",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                const Text(
+                  "Puedes cambiarlo después en tu perfil.",
+                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+                AvatarSelector(
+                  selectedAvatar: "anonimo", 
+                  onAvatarSelected: (avatar) async {
+                    Navigator.pop(sheetContext);
+                    try{
+                      await UserRepository().updateAvatarIcon(avatar);
+                    } catch (e){
+                      debugPrint("Error al guardar avatar: $e");
+                      final ctx = rootNavigatorKey.currentContext;
+                      if (ctx != null && ctx.mounted) showErrorSnack(ctx, "No se pudo guardar el avatar");
+                    }
+                  }
+                )
+              ],
+            ),
+          ),
+        )
+      ),
+    );
+  }
+
   Future<void> _loginWithGoogle() async {
     setState(() => _isLoading = true);
     try {
@@ -37,7 +96,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final userCredential = await authService.signInWithGoogle();
       
       // Si fue exitoso y el usuario no canceló el prompt
-      if (userCredential != null && mounted) {
+      if (userCredential != null) {
+        // Primer login con la cuenta de google: ofrecer elegir avatar
+        if (userCredential.additionalUserInfo?.isNewUser ?? false){
+          await _showAvatarPickerSheet();
+        }
+        if (!mounted) return;
         showSuccessSnack(context, "Inicio de sesión con Google exitoso");
         Navigator.pushReplacement(
           context,
@@ -55,6 +119,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loginUser() async {
+    
+    if (emailController.text.trim().isEmpty || passwordController.text.trim().isEmpty){ 
+      showErrorSnack(context, "Completa el correo y contraseña");
+      return;
+    }
+    
     setState(() => _isLoading = true);
     try {
       final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(email: emailController.text.trim(), password: passwordController.text.trim(),);
@@ -81,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       debugPrint("error de login: $e");
       if(!mounted) return;
-        showErrorSnack(context, "Ocurrió un error, intenta de nuevo");
+      showErrorSnack(context, "Ocurrió un error, intenta de nuevo");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -242,8 +312,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 40),
-
               // 1. Logo
               Center(
                 child: ClipRRect(

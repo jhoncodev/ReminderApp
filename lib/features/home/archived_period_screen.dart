@@ -52,7 +52,7 @@ class _ArchivedPeriodScreenState extends State<ArchivedPeriodScreen> {
     if (confirmed != true) return;
 
     try {
-      await _repo.unarchive(period);
+      _repo.unarchive(period).catchError((e) => debugPrint("Error al sincronizar la restauración: $e"));
       if (!mounted) return;
         showSuccessSnack(context, "Periodo restaurado");
     } catch (e) {

@@ -1,11 +1,13 @@
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
-import 'package:reminder_app/core/utils/app_feedback.dart';
+import 'package:reminder_app/core/utils/date_helpers.dart';
+import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
+import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/models/course.dart';
 import 'package:reminder_app/models/course_session.dart';
@@ -21,20 +23,35 @@ class ScheduleScreen extends StatefulWidget {
 class _ScheduleScreenState extends State<ScheduleScreen> {
   // ── constantes ──────────────────────────────────────────────────────────────
   static const _days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  static const _dayNames = [
+    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
+  ];
 
-  static const _startHour = 7;
+  static const _startHour = 0;
   static const _endHour = 24;
   static const _totalHours = _endHour - _startHour;
 
   static const double _hourHeight = 80.0; // Alto de cada hora en el grid
-  static const double _timeColWidth = 65.0;
-  static const double _dayColWidth = 100.0;
+  static const double _timeColWidth = 46.0;
+  static const double _gridHPadding = 8.0;
+
+  // Ancho de columna calculado para que los 7 días entren al ancho de pantalla
+  late double _dayColWidth;
 
   // ── estado ──────────────────────────────────────────────────────────────────
   List<Course> _courses = [];
   bool _loading = true;
   late DateTime _startOfWeek;
+  final _courseRepository = CourseRepository();
   final _periodRepository = PeriodRepository();
+  StreamSubscription<List<Course>>? _coursesSub;
+  StreamSubscription<List<Period>>? _periodsSub;
+  // Zoom y desplazamiento del grid (pinch para acercar/alejar).
+  // Arranca posicionado en las 7 am; doble tap restaura tamaño y posición.
+  final _gridTransform = TransformationController(_initialGridTransform());
+
+  static Matrix4 _initialGridTransform() =>
+      Matrix4.identity()..setTranslationRaw(0.0, -7 * _hourHeight, 0.0);
   List<Period> _periods = [];
   String? _selectedPeriodId;
 
@@ -43,51 +60,66 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void initState() {
     super.initState();
     _calculateCurrentWeek();
-    _loadCourses();
-    _loadPeriods();
+    _watchCourses();
+    _watchPeriods();
+  }
+
+  @override
+  void dispose() {
+    _coursesSub?.cancel();
+    _periodsSub?.cancel();
+    _gridTransform.dispose();
+    super.dispose();
   }
 
   void _calculateCurrentWeek() {
     final now = DateTime.now();
-    _startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    // Solo fecha (sin hora) para comparar rangos de periodos sin sorpresas
+    _startOfWeek = DateTime(now.year, now.month, now.day - (now.weekday - 1));
   }
 
- Future<void> _loadCourses() async {
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-    
-      if (uid == null) {
-        setState(() => _loading = false);
-        return;
-      }
-
-      final snap = await FirebaseFirestore.instance
-          .collection('courses')
-          .where('userId', isEqualTo: uid)
-          .get();
-
-      // 2. ¿Llegaron los datos?
-      setState(() {
-        _courses = snap.docs.map((d) => Course.fromFirestore(d, null)).toList();
-        _loading = false;
-      });
-
-    } catch (e) {
-      // 3. ¿Falló Firebase? (reglas de seguridad, índice faltante)
-      debugPrint("❌ DEBUG: Caught an error while fetching: $e");
-      setState(() => _loading = false); 
-    }
+  void _changeWeek(int deltaWeeks) {
+    setState(() {
+      _startOfWeek = _startOfWeek.add(Duration(days: 7 * deltaWeeks));
+    });
   }
 
-  Future<void> _loadPeriods() async {
-    try {
-      final periods = await _periodRepository.getAll();
-      if (!mounted) return;
-        setState(() => _periods = periods);
-    } catch (e) {
-      showErrorSnack(context, "Error al cargar los periodos");
-      debugPrint('Error al cargar los periodos: $e');
-    }
+  void _goToCurrentWeek() {
+    setState(_calculateCurrentWeek);
+  }
+
+  // Streams: entregan el cache local al instante (offline) y mantienen el grid reactivo
+  void _watchCourses() {
+    _coursesSub = _courseRepository.getUserCourses().listen(
+      (courses) {
+        if (!mounted) return;
+        setState(() {
+          _courses = courses;
+          _loading = false;
+        });
+      },
+      onError: (e) {
+        debugPrint("Error al cargar los cursos del horario: $e");
+        if (mounted) setState(() => _loading = false);
+      },
+    );
+  }
+
+  void _watchPeriods() {
+    _periodsSub = _periodRepository.watchAll().listen(
+      (periods) {
+        if (!mounted) return;
+        setState(() {
+          _periods = periods;
+          // Si el periodo filtrado fue archivado o eliminado, volver a "Todos"
+          if (_selectedPeriodId != null &&
+              periods.every((p) => p.id != _selectedPeriodId)) {
+            _selectedPeriodId = null;
+          }
+        });
+      },
+      onError: (e) => debugPrint("Error al cargar los periodos del horario: $e"),
+    );
   }
 
   // ── helpers ────────────────────────────────────────────────────────────────
@@ -106,24 +138,41 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return (diff / 60) * _hourHeight;
   }
 
-  Color _courseColor(int index) {
-    const palette = [
-      Color(0xFF9D65FF),
-      Color(0xFF5EAEFF),
-      Color(0xFFFF6B6B),
-      Color(0xFF6BFFB8),
-      Color(0xFFFFD166),
-      Color(0xFFFF9F1C),
-      Color(0xFF06D6A0),
-    ];
-    return palette[index % palette.length];
+  // Cursos visibles en una FECHA concreta del grid:
+  // - respetan el filtro manual del selector de periodo
+  // - cursos sin periodo: siempre visibles
+  // - cursos de periodos archivados o eliminados: ocultos
+  // - cursos con periodo: solo en los días dentro del rango del periodo
+  //   (un periodo 7-13 jun NO muestra el curso el día 3 aunque la semana lo toque)
+  List<Course> _coursesActiveOn(DateTime date) {
+    return _courses.where((course) {
+      if (_selectedPeriodId != null &&
+          course.academicPeriodId != _selectedPeriodId) {
+        return false;
+      }
+      final periodId = course.academicPeriodId;
+      if (periodId == null) return true;
+      final period = _periodById(periodId);
+      if (period == null) return false;
+      final start = DateTime(
+        period.startDate.year,
+        period.startDate.month,
+        period.startDate.day,
+      );
+      final end = DateTime(
+        period.endDate.year,
+        period.endDate.month,
+        period.endDate.day,
+      );
+      return !date.isBefore(start) && !date.isAfter(end);
+    }).toList();
   }
 
-  List<Course> get _filteredCourses {
-    if (_selectedPeriodId == null) return _courses;
-    return _courses
-      .where((c) => c.academicPeriodId == _selectedPeriodId)
-      .toList();
+  Period? _periodById(String id) {
+    for (final period in _periods) {
+      if (period.id == id) return period;
+    }
+    return null;
   }
 
   String get _selectedPeriodLabel {
@@ -145,6 +194,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   // ── build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // La semana completa se adapta al ancho de la pantalla
+    _dayColWidth = (MediaQuery.of(context).size.width -
+            _timeColWidth -
+            _gridHPadding * 2) /
+        7;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0F), // Fondo oscuro (hardcoded, deuda técnica)
       body: SafeArea(
@@ -170,37 +225,60 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget _buildTopBar() {
     final endOfWeek = _startOfWeek.add(const Duration(days: 6));
     final monthFormat = DateFormat('MMMM', 'es');
-    final title = '${monthFormat.format(_startOfWeek)} ${_startOfWeek.day} - ${endOfWeek.day}, ${endOfWeek.year}';
+    final title = '${capitalize(monthFormat.format(_startOfWeek))} ${_startOfWeek.day} - ${endOfWeek.day}, ${endOfWeek.year}';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+      padding: const EdgeInsets.fromLTRB(4, 12, 12, 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
+          IconButton(
+            onPressed: () => _changeWeek(-1),
+            icon: const Icon(Icons.chevron_left_rounded, color: Colors.white70),
+            tooltip: 'Semana anterior',
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: _goToCurrentWeek, // Tocar el título vuelve a la semana actual
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+              ),
             ),
+          ),
+          IconButton(
+            onPressed: () => _changeWeek(1),
+            icon: const Icon(Icons.chevron_right_rounded, color: Colors.white70),
+            tooltip: 'Semana siguiente',
           ),
           GestureDetector(
             onTap: _openPeriodSelector,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.white24),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    _selectedPeriodLabel,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w500,
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 90),
+                    child: Text(
+                      _selectedPeriodLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -215,12 +293,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildGrid() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+    return GestureDetector(
+      // Doble tap: volver al tamaño y posición normales
+      onDoubleTap: () => _gridTransform.value = _initialGridTransform(),
+      child: InteractiveViewer(
+        transformationController: _gridTransform,
+        // El grid entra al ancho de pantalla; se desliza vertical y
+        // el pinch solo ACERCA (el mínimo ya es la semana completa)
+        constrained: false,
+        minScale: 1.0,
+        maxScale: 2.5,
+        boundaryMargin: const EdgeInsets.only(bottom: 80),
         child: Padding(
-          padding: const EdgeInsets.only(right: 20, bottom: 40),
+          padding: const EdgeInsets.symmetric(horizontal: _gridHPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -292,18 +377,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return SizedBox(
       width: _timeColWidth,
       child: Stack(
+        // Sin clip: la etiqueta final "12 am" sobresale unos píxeles del alto del grid
+        clipBehavior: Clip.none,
         children: [
-          for (int h = 0; h < _totalHours; h++)
+          // <= para incluir la etiqueta de cierre del día ("12 am" final)
+          for (int h = 0; h <= _totalHours; h++)
             Positioned(
-              top: h * _hourHeight - 8,
+              // La primera etiqueta no se desplaza hacia arriba para que no se corte
+              top: h == 0 ? 0 : h * _hourHeight - 8,
               left: 0,
-              right: 12,
+              right: 6,
               child: Text(
                 _formatHour(_startHour + h),
                 textAlign: TextAlign.right,
                 style: const TextStyle(
                   color: Colors.white24,
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -314,13 +403,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildDayColumn(int dayIndex) {
+    final date = _startOfWeek.add(Duration(days: dayIndex));
     final daySessions = <_SessionEntry>[];
-    final courses = _filteredCourses;
-    for (int ci = 0; ci < courses.length; ci++) {
-      final course = courses[ci];
+    for (final course in _coursesActiveOn(date)) {
       for (final session in course.sessions) {
         if (session.dayOfWeek == dayIndex) {
-          daySessions.add(_SessionEntry(course: course, session: session, colorIndex: ci));
+          daySessions.add(_SessionEntry(course: course, session: session));
         }
       }
     }
@@ -351,22 +439,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget _buildSessionBlock(_SessionEntry entry) {
     final top = _topOffset(entry.session.startTime);
     final height = _blockHeight(entry.session.startTime, entry.session.endTime).clamp(40.0, double.infinity);
-    final color = _courseColor(entry.colorIndex);
+    final color = Color(entry.course.colorCode); // El color elegido al crear el curso
 
     return Positioned(
       top: top,
-      left: 6,
-      right: 6,
+      left: 2,
+      right: 2,
       height: height,
       child: GestureDetector(
         onTap: () => _showSessionDetail(entry, color),
         child: Container(
           decoration: BoxDecoration(
             color: color.withValues(alpha:0.18), // Fondo translúcido del color del curso
-            border: Border(left: BorderSide(color: color, width: 4)), // Borde izquierdo del color del curso
+            border: Border(left: BorderSide(color: color, width: 3)), // Borde izquierdo del color del curso
             borderRadius: BorderRadius.circular(4),
           ),
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -386,18 +474,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: color,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const Spacer(),
               if (height > 70)
-                Text(
-                  '${entry.session.startTime} - ${entry.session.endTime}',
-                  style: TextStyle(
-                    color: color.withValues(alpha:0.8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
+                FittedBox(
+                  // Encoge el texto si "11:30 PM - 11:59 PM" no entra en la columna
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '${formatTo12h(entry.session.startTime)} - ${formatTo12h(entry.session.endTime)}',
+                    style: TextStyle(
+                      color: color.withValues(alpha:0.8),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
             ],
@@ -487,6 +579,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _showSessionDetail(_SessionEntry entry, Color color) {
+    // Día de la semana + fecha de la semana mostrada (el grid se desliza,
+    // así el usuario no pierde de vista qué día está viendo)
+    final date = _startOfWeek.add(Duration(days: entry.session.dayOfWeek));
+    final dayLabel = '${_dayNames[entry.session.dayOfWeek]} ${date.day}';
+
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1C1C1E), // Modal oscuro
@@ -513,7 +610,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            _detailRow(Icons.access_time_rounded, '${entry.session.startTime} – ${entry.session.endTime}'),
+            _detailRow(Icons.today_rounded, dayLabel),
+            _detailRow(Icons.access_time_rounded, '${formatTo12h(entry.session.startTime)} – ${formatTo12h(entry.session.endTime)}'),
             if (entry.session.roomName != null) _detailRow(Icons.room_rounded, entry.session.roomName!),
             if (entry.course.note != null && entry.course.note!.isNotEmpty)
               _detailRow(Icons.notes_rounded, entry.course.note!),
@@ -543,15 +641,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   String _formatHour(int hour) {
-    if (hour == 0) return '12:00 am';
-    if (hour == 12) return '12:00 pm';
-    return hour < 12 ? '${hour.toString().padLeft(2, '0')}:00 am' : '${(hour - 12).toString().padLeft(2, '0')}:00 pm';
+    if (hour == 0 || hour == 24) return '12 am';
+    if (hour == 12) return '12 pm';
+    return hour < 12 ? '$hour am' : '${hour - 12} pm';
   }
 }
 
 class _SessionEntry {
   final Course course;
   final CourseSession session;
-  final int colorIndex;
-  const _SessionEntry({required this.course, required this.session, required this.colorIndex});
+  const _SessionEntry({required this.course, required this.session});
 }

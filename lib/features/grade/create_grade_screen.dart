@@ -155,9 +155,9 @@ class _CreateGradeScreenState extends State<CreateGradeScreen> {
       );
 
       if (widget.gradeToEdit == null) {
-        await _gradeRepository.create(grade);
+        _gradeRepository.create(grade).catchError((e) => debugPrint("Error al sincronizar la calificación: $e"));
       } else {
-        await _gradeRepository.update(grade);
+        _gradeRepository.update(grade).catchError((e) => debugPrint("Error al sincronizar la calificación: $e"));
       }
 
       if (mounted) {

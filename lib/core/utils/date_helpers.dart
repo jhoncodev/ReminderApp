@@ -4,3 +4,9 @@ String formatShortDate(DateTime date) {
   final m = date.month.toString().padLeft(2, '0');
   return "$d/$m/${date.year}";
 }
+
+// Primera letra en mayúscula: "junio" -> "Junio"
+String capitalize(String text) {
+  if (text.isEmpty) return text;
+  return text[0].toUpperCase() + text.substring(1);
+}

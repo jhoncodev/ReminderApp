@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
+import 'package:reminder_app/core/utils/picker_theme.dart';
 
 class AppDatePickerField extends StatelessWidget {
   final TextEditingController controller;
@@ -15,18 +16,7 @@ class AppDatePickerField extends StatelessWidget {
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      builder: (context, child) => Theme(
-        data: ThemeData.dark().copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.purplePrimary,
-            surface: AppColors.surface,
-          ),
-          dialogTheme: const DialogThemeData(
-            backgroundColor: AppColors.surface,
-          ),
-        ), 
-        child: child!,
-      )
+      builder: buildDarkPicker,
     );
 
     if (picked != null) {

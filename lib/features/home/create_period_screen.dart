@@ -109,7 +109,7 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
           updatedAt: now,
         );
 
-        await _repo.update(updated);
+        _repo.update(updated).catchError((e) => debugPrint("Error al sincronizar el periodo: $e"));
       } else {
         // Creando un periodo
         final newPeriod = Period(
@@ -121,7 +121,7 @@ class _CreatePeriodScreenState extends State<CreatePeriodScreen> {
           updatedAt: now,
         );
 
-        await _repo.create(newPeriod);
+        _repo.create(newPeriod).catchError((e) => debugPrint("Error al sincronizar el periodo: $e"));
       }
 
       if (!mounted) return;

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/utils/date_helpers.dart';
+import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/share_sheet.dart';
 import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/features/home/archived_period_screen.dart';
@@ -53,7 +55,7 @@ class _PeriodScreenState extends State<PeriodScreen> {
     if (confirmed != true) return;
 
     try {
-      await _repo.archive(period);
+      _repo.archive(period).catchError((e) => debugPrint("Error al sincronizar el archivado: $e"));
       if (!mounted) return;
         showSuccessSnack(context, "Periodo archivado");
     } catch (e) {
@@ -99,7 +101,7 @@ class _PeriodScreenState extends State<PeriodScreen> {
     if (period.id == null) return;
 
     try {
-      await _repo.delete(period.id!);
+      _repo.delete(period.id!).catchError((e) => debugPrint("Error al sincronizar la eliminación: $e"));
       if (!mounted) return;
         showSuccessSnack(context, "Periodo eliminado");
     } catch (e) {
@@ -127,21 +129,8 @@ class _PeriodScreenState extends State<PeriodScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context), 
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-        ),
-        title: const Text(
-          "Periodos",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+      appBar: DarkAppBar(
+        title: "Periodos",
         actions: [
           IconButton(
             onPressed: () => Navigator.push(
@@ -287,12 +276,28 @@ class _PeriodTile extends StatelessWidget {
             ),
           ),
           IconButton(
+              onPressed: () => showShareSheet(
+                context,
+                type: 'period',
+                typeLabel: 'Periodo',
+                resourceTitle: period.name,
+                payload: periodPayload(period),
+              ),
+              icon: const Icon(Icons.share_outlined, color: AppColors.cyan),
+              tooltip: "Compartir",
+            ),
+          IconButton(
             onPressed: onEdit,
             icon: const Icon(
               Icons.edit_outlined,
               color: AppColors.purplePrimary,
             ),
             tooltip: "Editar",
+          ),
+          IconButton(
+            onPressed: onArchive,
+            icon: const Icon(Icons.archive_outlined, color: Colors.orangeAccent),
+            tooltip: "Archivar",
           ),
           IconButton(
             onPressed: onDelete,

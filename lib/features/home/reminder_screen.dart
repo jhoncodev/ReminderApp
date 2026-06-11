@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/share_sheet.dart';
 import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/reminder_repository.dart';
 import 'package:reminder_app/features/home/create_reminder_screen.dart';
@@ -60,13 +61,17 @@ class _ReminderScreenState extends State<ReminderScreen> {
     if (reminder.id == null) return;
 
     try {
-      await _repo.delete(reminder.id!);
+      _repo
+          .delete(reminder.id!)
+          .catchError(
+            (e) => debugPrint("Error al sincronizar la eliminación: $e"),
+          );
       if (!mounted) return;
-        showSuccessSnack(context, "Recordatorio eliminado");
+      showSuccessSnack(context, "Recordatorio eliminado");
     } catch (e) {
       if (!mounted) return;
-        showErrorSnack(context, "Error al eliminar el recordatorio");
-        debugPrint("Error al eliminar el recordatorio: $e");
+      showErrorSnack(context, "Error al eliminar el recordatorio");
+      debugPrint("Error al eliminar el recordatorio: $e");
     }
   }
 
@@ -101,7 +106,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
           if (snapshot.hasError) {
             return AppErrorView(
               message: "No se pudieron cargar los recordatorios",
-              error: snapshot.error,  
+              error: snapshot.error,
             );
           }
 
@@ -213,6 +218,17 @@ class _ReminderTile extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            onPressed: () => showShareSheet(
+              context,
+              type: 'reminder',
+              typeLabel: 'Recordatorio',
+              resourceTitle: reminder.name,
+              payload: reminderPayload(reminder),
+            ),
+            icon: const Icon(Icons.share_outlined, color: AppColors.cyan),
+            tooltip: "Compartir",
           ),
           IconButton(
             onPressed: onEdit,

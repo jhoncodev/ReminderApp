@@ -36,4 +36,11 @@ class UserRepository {
   Future<void> updateUser(app_user.User user) async {
     await _usersRef.doc(_currentUserId).set(user);
   }
+
+  Future<void> updateAvatarIcon(String avatarIcon) async {
+    await _usersRef.doc(_currentUserId).update({
+      'avatarIcon': avatarIcon,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 }

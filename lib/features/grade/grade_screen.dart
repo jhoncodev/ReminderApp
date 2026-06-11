@@ -379,7 +379,7 @@ class _GradeScreenState extends State<GradeScreen> {
 
     if (confirmed == true) {
       try {
-        await _gradeRepository.delete(gradeId);
+        _gradeRepository.delete(gradeId).catchError((e) => debugPrint("Error al sincronizar la eliminación: $e"));
         if (mounted) {
           showSuccessSnack(context, "Calificación eliminada");
         }

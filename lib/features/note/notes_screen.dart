@@ -190,7 +190,7 @@ class _NotesScreenState extends State<NotesScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.note_alt_outlined, color: Colors.white24, size: 64),
+                        const Icon(Icons.note_alt_outlined, color: AppColors.purplePrimary, size: 64),
                         const SizedBox(height: 16),
                         Text(
                           _searchQuery.isNotEmpty

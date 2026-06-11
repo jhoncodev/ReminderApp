@@ -5,12 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const String _serverClientId = "276233172768-7jkfl9nkp1a8l8nbf9broqc1mkc7e1qq.apps.googleusercontent.com";
 
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      await GoogleSignIn.instance.initialize();
-      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
-          .authenticate();
+      await GoogleSignIn.instance.initialize(serverClientId: _serverClientId);
+      final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate();
 
       final clientAuth = await googleUser.authorizationClient.authorizeScopes([
         'email',

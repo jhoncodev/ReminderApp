@@ -3,6 +3,7 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/app_feedback.dart';
 import 'package:reminder_app/core/utils/time_helpers.dart';
 import 'package:reminder_app/core/widgets/dark_app_bar.dart';
+import 'package:reminder_app/core/widgets/share_sheet.dart';
 import 'package:reminder_app/core/widgets/status_views.dart';
 import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/features/grade/grade_screen.dart';
@@ -24,7 +25,12 @@ class _CourseScreenState extends State<CourseScreen> {
 
   String _formatSessions(List<CourseSession> sessions) {
     if (sessions.isEmpty) return "Sin sesiones";
-    return sessions.map((s) => '${_dayLabels[s.dayOfWeek]} ${_formatHourShort(s.startTime)} - ${_formatHourShort(s.endTime)}').join(", ");
+    return sessions
+        .map(
+          (s) =>
+              '${_dayLabels[s.dayOfWeek]} ${_formatHourShort(s.startTime)} - ${_formatHourShort(s.endTime)}',
+        )
+        .join(", ");
   }
 
   String _formatHourShort(String time24h) {
@@ -69,13 +75,17 @@ class _CourseScreenState extends State<CourseScreen> {
     if (course.id == null) return;
 
     try {
-      await _repo.delete(course.id!);
+      _repo
+          .delete(course.id!)
+          .catchError(
+            (e) => debugPrint("Error al sincronizar la eliminación: $e"),
+          );
       if (!mounted) return;
-        showSuccessSnack(context, "Curso eliminado");
+      showSuccessSnack(context, "Curso eliminado");
     } catch (e) {
       if (!mounted) return;
-        showErrorSnack(context, "Error al eliminar el curso");
-        debugPrint("Error al eliminar el curso: $e");
+      showErrorSnack(context, "Error al eliminar el curso");
+      debugPrint("Error al eliminar el curso: $e");
     }
   }
 
@@ -229,6 +239,17 @@ class _CourseTile extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            onPressed: () => showShareSheet(
+              context,
+              type: 'course',
+              typeLabel: 'Curso',
+              resourceTitle: course.name,
+              payload: coursePayload(course),
+            ),
+            icon: const Icon(Icons.share_outlined, color: AppColors.cyan),
+            tooltip: "Compartir",
           ),
           IconButton(
             onPressed: onViewGrades,

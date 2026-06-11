@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/utils/app_feedback.dart';
+import 'package:reminder_app/core/widgets/share_sheet.dart';
 import '../../data/note_repository.dart';
 import '../../data/course_repository.dart';
 import '../../models/note.dart';
@@ -58,7 +59,9 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
   Future<void> _fetchSelectedCourseName() async {
     if (_selectedCourseId != null) {
       try {
-        final course = await _courseRepository.getCourseById(_selectedCourseId!);
+        final course = await _courseRepository.getCourseById(
+          _selectedCourseId!,
+        );
         if (mounted && course != null) {
           setState(() {
             _selectedCourseName = course.name;
@@ -88,25 +91,32 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
     try {
       if (widget.note == null) {
         // CREAR: no llegó apunte existente
-        await _noteRepository.addNote(
-          title: title,
-          content: content,
-          courseId: _selectedCourseId,
-          colorCode: _selectedCourseColor,
-        );
+        _noteRepository
+            .addNote(
+              title: title,
+              content: content,
+              courseId: _selectedCourseId,
+              colorCode: _selectedCourseColor,
+            )
+            .catchError(
+              (e) => debugPrint("Error al sincronizar el apunte: $e"),
+            );
       } else {
         // ACTUALIZAR: sobrescribe el apunte existente
         final updatedNote = Note(
           id: widget.note!.id,
           userId: widget.note!.userId,
-          courseId:
-              _selectedCourseId, // Permite mover el apunte a otro curso
+          courseId: _selectedCourseId, // Permite mover el apunte a otro curso
           title: title,
           content: content,
           createdAt: widget.note!.createdAt,
           colorCode: _selectedCourseColor, // Mantiene el color original
         );
-        await _noteRepository.updateNote(updatedNote);
+        _noteRepository
+            .updateNote(updatedNote)
+            .catchError(
+              (e) => debugPrint("Error al sincronizar el apunte: $e"),
+            );
       }
 
       if (mounted) Navigator.pop(context);
@@ -116,7 +126,7 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
         showErrorSnack(context, "Error al guardar el apunte");
       }
     } finally {
-      if (mounted){
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
@@ -160,11 +170,17 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
     if (confirm == true && mounted) {
       setState(() => _isLoading = true);
       try {
-        await _noteRepository.deleteNote(widget.note!.id);
+        _noteRepository
+            .deleteNote(widget.note!.id)
+            .catchError(
+              (e) => debugPrint(
+                "Error al sincronizar la eliminación del apunte: $e",
+              ),
+            );
         if (mounted) Navigator.pop(context); // Volver a la lista tras eliminar
       } catch (e) {
         debugPrint("Error al eliminar el apunte: $e");
-        if (mounted){
+        if (mounted) {
           showErrorSnack(context, "Error al eliminar el apunte");
           setState(() => _isLoading = false);
         }
@@ -251,7 +267,8 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
                                   setState(() {
                                     _selectedCourseId = course.id;
                                     _selectedCourseName = course.name;
-                                    _selectedCourseColor = course.colorCode; // Toma el color del curso
+                                    _selectedCourseColor = course
+                                        .colorCode; // Toma el color del curso
                                   });
                                   Navigator.pop(context);
                                 },
@@ -293,6 +310,18 @@ class _CreateNoteScreenState extends State<CreateNoteScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          if (widget.note != null)
+            IconButton(
+              onPressed: () => showShareSheet(
+                context,
+                type: 'note',
+                typeLabel: 'Apunte',
+                resourceTitle: widget.note!.title,
+                payload: notePayload(widget.note!),
+              ),
+              icon: const Icon(Icons.share_outlined, color: AppColors.cyan),
+              tooltip: "Compartir",
+            ),
           // En modo edición se muestra el ícono de eliminar
           if (widget.note != null && !_isLoading)
             IconButton(

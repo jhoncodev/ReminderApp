@@ -140,7 +140,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           updatedAt: now,
         );
 
-        await _courseRepo.update(updated);
+        _courseRepo.update(updated).catchError((e) => debugPrint("Error al sincronizar el curso: $e"));
       } else {
         final newCourse = Course(
           userId: user.uid,
@@ -153,7 +153,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           updatedAt: now,
         );
 
-        await _courseRepo.create(newCourse);
+        _courseRepo.create(newCourse).catchError((e) => debugPrint("Error al sincronizar el curso: $e"));
       }
 
       if (!mounted) return;

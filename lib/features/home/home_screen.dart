@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:reminder_app/core/theme/app_colors.dart';
 import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
 import 'package:reminder_app/core/widgets/create_options_sheet.dart';
+import 'package:reminder_app/core/widgets/schedule_item_card.dart';
+import 'package:reminder_app/features/home/upcoming_screen.dart';
 import 'package:reminder_app/data/course_repository.dart';
 import 'package:reminder_app/data/period_repository.dart';
 import 'package:reminder_app/data/reminder_repository.dart';
@@ -127,13 +129,14 @@ class _HomeScreen extends State<HomeScreen> {
                       reminders: reminders,
                       periods: periods,
                     );
-                    final upcoming = ScheduleRepository.buildUpcoming(
+                    final upcomingDays = ScheduleRepository.buildUpcomingDays(
                       courses: courses,
                       reminders: reminders,
                       periods: periods,
+                      daysAhead: 7,
                     );
 
-                    return _buildContent(today, upcoming, isLoading);
+                    return _buildContent(today, upcomingDays, isLoading);
                   },
                 );
               },
@@ -145,13 +148,13 @@ class _HomeScreen extends State<HomeScreen> {
         backgroundColor: AppColors.purplePrimary,
         foregroundColor: Colors.white,
         onPressed: () => CreateOptionsSheet.show(context),
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.apps),
       ),
       bottomNavigationBar: const BottomNavBar(currentRoute: '/home'),
     );
   }
 
-  Widget _buildContent(List<ScheduleItem> today, List<ScheduleItem> upcoming, bool isLoading){
+  Widget _buildContent(List<ScheduleItem> today, List<DaySchedule> upcomingDays, bool isLoading){
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -182,22 +185,14 @@ class _HomeScreen extends State<HomeScreen> {
               style: TextStyle(color: Colors.white54),
             )
           else
-            ...today.map(
-              (item) => _buildScheduleCard(
-                time: item.time, 
-                title: item.title, 
-                subtitle: item.subtitle, 
-                accentColor: item.accentColor,
-                icon: item.icon,
-              ),
-            ),
+            ...today.map((item) => ScheduleItemCard(item: item)),
           const SizedBox(height: 40),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
-            children: const [
-              Text(
+            children: [
+              const Text(
                 "Próximos",
                 style: TextStyle(
                   color: Colors.white,
@@ -207,43 +202,38 @@ class _HomeScreen extends State<HomeScreen> {
                 ),
               ),
 
-              Text(
-                "Ver Todo",
-                style: TextStyle(
-                  color: AppColors.purpleAccent,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UpcomingScreen()),
+                  );
+                },
+                child: const Text(
+                  "Ver Todo",
+                  style: TextStyle(
+                    color: AppColors.purpleAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
 
-          SizedBox(
-            height: 140,
-            child: isLoading ? const Center(
-              child: CircularProgressIndicator(color: AppColors.purplePrimary)) : upcoming . isEmpty ? const Center(
-                child: Text(
-                  "Nada próximo",
-                  style: TextStyle(color: Colors.white54),
-                ),
-              )
-              : ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: upcoming.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 16),
-                itemBuilder: (_, i){
-                  final item = upcoming[i];
-                  return _buildUpcomingCard(
-                    title: item.title, 
-                    subtitle: item.subtitle, 
-                    icon: item.icon, 
-                    accentColor: item.accentColor
-                  );
-                },
-              ),
-          ),
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(color: AppColors.purplePrimary),
+            )
+          else if (upcomingDays.isEmpty)
+            const Text(
+              "Nada próximo en los siguientes 7 días",
+              style: TextStyle(color: Colors.white54),
+            )
+          else
+            ...upcomingDays.map((day) => DaySection(day: day)),
         ],
       ),
     );
@@ -369,113 +359,4 @@ class _HomeScreen extends State<HomeScreen> {
     );
   }
 
-  Widget _buildScheduleCard({
-    required String time,
-    required String title,
-    required String subtitle,
-    required Color accentColor,
-    IconData? icon,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Columna de hora
-          SizedBox(
-            width: 60,
-            child: Text(
-              time,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          // Card del evento
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(20),
-                // Borde izquierdo de color
-                border: Border(left: BorderSide(color: accentColor, width: 4)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (icon != null) Icon(icon, color: Colors.white24, size: 32),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUpcomingCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color accentColor,
-  }) {
-    return Container(
-      width: 160,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(24),
-        border: Border(left: BorderSide(color: accentColor, width: 4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Icon(icon, color: accentColor, size: 28),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

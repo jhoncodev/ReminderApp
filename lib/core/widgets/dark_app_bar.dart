@@ -3,7 +3,8 @@ import 'package:reminder_app/core/theme/app_colors.dart';
 
 class DarkAppBar extends StatelessWidget implements PreferredSizeWidget{
   final String title;
-  const DarkAppBar({super.key, required this.title});
+  final List<Widget>? actions;
+  const DarkAppBar({super.key, required this.title, this.actions});
 
   @override
   Widget build(BuildContext context) {
@@ -11,7 +12,7 @@ class DarkAppBar extends StatelessWidget implements PreferredSizeWidget{
       backgroundColor: AppColors.background,
       elevation: 0,
       leading: IconButton(
-        onPressed: () => Navigator.pop(context), 
+        onPressed: () => Navigator.pop(context),
         icon: const Icon(Icons.arrow_back, color: Colors.white),
       ),
       title: Text(
@@ -23,6 +24,7 @@ class DarkAppBar extends StatelessWidget implements PreferredSizeWidget{
         ),
       ),
       centerTitle: false,
+      actions: actions,
     );
   }
   

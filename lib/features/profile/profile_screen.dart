@@ -89,7 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         avatarIcon: _selectedAvatar,
       );
 
-      await _userRepository.updateUser(updatedUser);
+      _userRepository.updateUser(updatedUser).catchError((e) => debugPrint("Error al sincronizar el perfil: $e"));
 
       if (mounted) {
         showSuccessSnack(context, "Perfil actualizado con éxito!");

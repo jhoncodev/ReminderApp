@@ -94,7 +94,7 @@ class CourseSession {
   final int dayOfWeek;        // 0=Lun ... 6=Dom
   final String startTime;     // "HH:mm" formato 24h ej. "08:00"
   final String endTime;       // "HH:mm" formato 24h ej. "10:00"
-  final String? roomName;     // Aula libre (Sprint 2 migra a classroomId FK)
+  final String? roomName;     // Aula libre por sesión (Classroom como entidad: DESCARTADA)
 }
 ```
 
@@ -212,32 +212,50 @@ class Classroom {
 - [x] **Color por curso** (2026-06-05): `colorCode` en Course + widget `ColorSelector`.
 - [x] **Estabilización general** (2026-06-10): ver sección 10 (reglas Firestore, sistema de mensajes, errores de auth en español, localización de fechas).
 
-**Pendiente:**
-- Recuperar contraseña (Firebase Auth `sendPasswordResetEmail`).
-- Modo offline con persistencia de Firestore.
-- Pantalla Compartir completa (recordatorios, apuntes, cursos, periodos).
-- Selector de avatar tras el primer login con Google (detectar con `additionalUserInfo.isNewUser`).
-- Entidad `Teacher` con CRUD propio + vínculo a Course.
-- Entidad `Classroom` con CRUD propio + vínculo a CourseSession.
-- Entidad `Note` (apuntes) libre y por curso.
-- Detección de conflictos de horario al crear/editar curso.
-- Notificaciones locales (`flutter_local_notifications`) para recordatorios, calificaciones y cursos del día.
-- **Navegación temporal en Horario:** la fecha del header siempre muestra la semana actual del calendario. Permitir navegar semanas (`< >`) o saltar a la semana del periodo seleccionado, para repasar semestres pasados con su calendario correcto. Decidir comportamiento cuando el periodo está en curso vs. ya terminado.
-- **Validación al editar fechas de un periodo:** si el periodo tiene cursos asociados, mostrar advertencia (NO bloqueo) al cambiar fechas, ya que el filtro automático de Home podría ocultar esos cursos. Texto sugerido: "Este periodo tiene N cursos; cambiar las fechas puede ocultarlos del inicio. ¿Continuar?".
+- [x] **Recuperar contraseña** (2026-06-11): sheet en login con `sendPasswordResetEmail`. Errores inline dentro del modal (regla nueva de §6).
+- [x] **Verificación de correo obligatoria** (2026-06-11): al registrarse se envía link de verificación y se cierra sesión; login y AuthGate bloquean usuarios con `emailVerified == false` (diálogo con "Reenviar Correo"). Cuentas Google ya vienen verificadas. OJO: cuentas de prueba viejas quedan bloqueadas hasta verificarse.
+- [x] **Selector de avatar tras primer login con Google** (2026-06-11): detecta `additionalUserInfo.isNewUser`; sheet sobre Home vía `rootNavigatorKey` (AuthGate desmonta el login al instante, su context muere). `UserRepository.updateAvatarIcon()` con `update` (no `set`).
+
+**Configuración Google Sign-In (IMPORTANTE para cada integrante):**
+- `google_sign_in` 7.x exige `serverClientId` explícito en Android: está como constante en `auth_service.dart` (es el Web client ID de Authentication > Google > Web SDK configuration; es público, no es secreto).
+- **Cada integrante debe registrar el SHA-1/SHA-256 de SU máquina** en Firebase Console (Configuración del proyecto > app Android > Agregar huella digital) o Google Sign-In le fallará solo a él. Obtenerlo: `cd android && .\gradlew signingReport` (variant debug). Tras agregar huellas, re-descargar `google-services.json`.
+
+- [x] **Modo offline** (2026-06-11): persistencia explícita en `main.dart` (`persistenceEnabled` + cache ilimitado) y **NUEVA CONVENCIÓN: las escrituras a Firestore (create/update/delete/set) NO se esperan con `await`** — con persistencia offline el Future solo se completa cuando el servidor confirma, y un `await` cuelga la UI sin internet. Patrón: `repo.create(x).catchError((e) => debugPrint(...));` + snack + pop inmediatos. La escritura local es instantánea y se sincroniza sola. Los `await` de LECTURAS y de Firebase Auth sí se mantienen (necesitan respuesta real).
+- [x] **Pickers unificados** (2026-06-11): helper `buildDarkPicker` en `lib/core/utils/picker_theme.dart` (tema oscuro + formato 12h AM/PM + color del AM/PM) usado por TODOS los date/time pickers — no duplicar más temas de picker. El formato 12h requirió `locale: Locale('es', 'US')` en `app.dart` (única variante de español con reloj de 12h en los datos de Flutter; los textos siguen en español).
+- [x] **Fix:** editar un recordatorio ya no borra su hora/fecha (faltaba prellenar `startTimeController` y `_selectedDate` en `initState`).
+
+- [x] **Pulido de Horario y Home** (2026-06-11): horas 12h en toda la UI; grid del horario adaptado al ancho de pantalla (7 días visibles) con pinch para acercar y doble tap para restaurar; validación del periodo POR DÍA (no por semana); navegación de semanas con `< >` y tap en título = semana actual; "Próximos" = 7 días rodantes agrupados por día colapsable; pantalla "Pendientes Futuros" (30 días) desde "Ver Todo"; hora de fin en cards de cursos; día en el detalle de sesión; FAB `Icons.apps`; ícono campana para recordatorios; AppBar y empty states unificados en las 4 pantallas gestionables (`DarkAppBar` ahora acepta `actions`).
+- [x] **Recordatorios rediseñados** (2026-06-11): cada frecuencia muestra SOLO sus campos (Una vez: fecha; Diario: nada extra; Semanal: días; Mensual: primera fecha que se repite cada mes — ahora SÍ genera cards). Presupuesto como toggle. Validaciones por frecuencia. Al guardar se limpian los campos que no aplican.
+- [x] **COMPARTIR entre usuarios** (2026-06-11): por correo + copia + bandeja de aceptación. Modelo `SharedItem` (`lib/models/shared_item.dart`) + `SharedItemRepository` (busca usuario por email con `limit(1)`, send/inbox/accept/reject). Sheet de envío reutilizable `lib/core/widgets/share_sheet.dart` con payloads por tipo (SIN `userId` ni ids de vínculos: curso viaja sin periodo, apunte sin curso). Botón compartir en tiles de recordatorios/cursos/periodos y en el editor de apuntes. Bandeja en la pestaña COMPARTIR: aceptar copia el recurso a tu cuenta, rechazar lo descarta.
+  - **Firebase (ya configurado, no repetir):** reglas nuevas — `users` permite `list` con `limit == 1` (búsqueda por correo) y bloque propio para `shared_items` (create solo a nombre propio; read/delete solo remitente o destinatario). Índice compuesto: `shared_items` (`toUserId` ↑ + `createdAt` ↓).
+  - Convención: los correos en `users` se guardan en minúsculas (`.toLowerCase()` en registro; Google ya los da así).
+
+**Descartado (2026-06-11):**
+- ~~Entidad `Classroom`~~ — `CourseSession.roomName` ya cubre el aula por sesión; una entidad con CRUD propio no aporta valor que justifique 3 pantallas más.
+- ~~Entidad `Note`~~ — ya implementada (Apuntes).
+- ~~Navegación temporal en Horario~~ — ya implementada (flechas `< >` + validación por día).
+
+**Pendiente (roadmap final decidido el 2026-06-11):**
+1. **Entidad `Teacher`** (decisión confirmada: entidad con CRUD, no campo de texto): modelo + repo + pantalla de gestión, vínculo opcional `teacherId` en Course, nombre del profesor visible en el tile del curso y en el detalle de sesión del Horario.
+2. **Paquete "validaciones al guardar"** (independientes pero se hacen juntas):
+   - Detección de conflictos de horario al crear/editar curso (comparar rangos de horas por día contra los demás cursos del mismo periodo; advertencia, no bloqueo).
+   - Validación al editar fechas de un periodo con cursos: advertencia "Este periodo tiene N cursos; cambiar las fechas puede ocultarlos del inicio. ¿Continuar?".
+3. **Notificaciones locales** (`flutter_local_notifications`): el ícono de campana del Home abre un modal de configuración con avisos configurables ("15 min antes" + agregar más: 10, 5...) que aplican a cursos y recordatorios con hora. Es la feature más laboriosa: permisos Android 13+, programación recurrente y reprogramación al cambiar datos.
+4. **Recordatorio por voz (versión simple):** plugin `speech_to_text` (reconocimiento del sistema, gratis, sin backend, es compatible con español y offline) — botón de micrófono que dicta el NOMBRE del recordatorio; fecha/hora se eligen con los pickers normales. Whisper/LLM descartados por costo y complejidad.
 
 ### Sprint 3 (posterior)
-- Modo offline + sync (Firestore lo trae built-in, hay que verificar config).
-- Modo Focus / Pomodoro.
-- Botón "¿Cómo vas?" con respuestas predefinidas.
-- Mensajes motivacionales con API de IA.
+- ~~Modo offline + sync~~ — ya implementado (2026-06-11).
+- ~~Modo Focus / Pomodoro~~ — DESCARTADO (2026-06-11).
+- ~~Botón "¿Cómo vas?"~~ — DESCARTADO (2026-06-11).
+- ~~Mensajes motivacionales con API de IA~~ — DESCARTADO (2026-06-11): requería Functions como proxy de la key.
 
 ### Sprint 4 (avanzado)
-- Compartir cursos / recordatorios / notas por QR o email.
-- Recordatorios contextuales basados en clima.
-- Exportar reportes en PDF.
+- ~~Compartir cursos / recordatorios / notas~~ — ya implementado in-app por correo (2026-06-11). Queda como idea opcional: QR para compartir cara a cara.
+- ~~Recordatorios contextuales basados en clima~~ — DESCARTADO (2026-06-11).
+- ~~Exportar reportes en PDF~~ — DESCARTADO (2026-06-11).
 
 ### Sprint 5 (ambicioso)
-- Crear recordatorios por voz con Whisper + LLM para parsear lenguaje natural.
+- ~~Whisper + LLM~~ — reemplazado por versión simple con `speech_to_text` (ver Pendiente del Sprint 2).
 
 ---
 
@@ -369,7 +387,8 @@ lib/
 | Rename limpio de Activity → Reminder borrando datos viejos | Estamos en desarrollo temprano, la coherencia código/BD vale más que conservar datos de prueba. |
 | Avatares como assets locales, no Firebase Storage | Son 10 íconos fijos, no datos del usuario. Ahorra costo de almacenamiento/lectura. |
 | `avatarIcon` guarda string del nombre (opción A) | Más simple que mantener un mapa de IDs. Es contenido visual, no lógica de negocio. |
-| Teacher/Classroom como entidades separadas (no embebidas) | Permite reutilizar un profesor en varios cursos sin duplicar datos. |
+| Classroom DESCARTADA como entidad (2026-06-11) | `CourseSession.roomName` ya cubre el aula por sesión; el CRUD propio no justifica su costo. |
+| Teacher SÍ como entidad con CRUD (2026-06-11) | Decisión del equipo: más limpio, permite reutilizar profesores entre cursos. Vínculo opcional `teacherId` en Course. |
 | `CourseSession` como lista de objetos (no listas paralelas) | Listas paralelas se desincronizan y producen bugs. |
 | `Grade.maxValue` configurable | Algunos cursos van sobre 20, otros sobre 100. |
 | Validación de suma de pesos ≤ 100 en cliente | Feedback inmediato al usuario. |
@@ -387,10 +406,10 @@ lib/
 
 Estos temas se decidirán cuando lleguemos a su sprint:
 
-- **API de IA para mensajes motivacionales:** ¿Claude API, OpenAI o Gemini? Considerar costo y manejo de keys (no exponer en cliente, usar Firebase Functions como proxy).
-- **Permisos al compartir recursos:** ¿solo lectura o también edición? ¿revocación?
-- **Algoritmo de detección de conflictos:** comparación de rangos horarios por día. Definir si conflicto es "bloqueante" o solo "advertencia".
-- **Whisper:** ¿OpenAI API o modelo self-hosted? El parser de fecha en lenguaje natural requiere un LLM aparte.
+- ~~API de IA para mensajes motivacionales~~ — DESCARTADA la feature (2026-06-11).
+- ~~Permisos al compartir recursos~~ — RESUELTO (2026-06-11): se comparte una COPIA independiente con bandeja de aceptación; no hay edición compartida ni revocación que gestionar.
+- ~~Algoritmo de detección de conflictos~~ — DECIDIDO (2026-06-11): advertencia, no bloqueo.
+- ~~Whisper~~ — RESUELTO (2026-06-11): `speech_to_text` on-device; sin parser de lenguaje natural (la fecha se elige con pickers).
 
 ---
 

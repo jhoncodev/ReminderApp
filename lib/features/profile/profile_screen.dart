@@ -7,7 +7,6 @@ import 'package:reminder_app/core/widgets/app_text_field.dart';
 import 'package:reminder_app/core/widgets/avatar_selector.dart';
 import 'package:reminder_app/core/widgets/bottom_nav_bar.dart';
 import 'package:reminder_app/core/widgets/primary_gradient_button.dart';
-import 'package:reminder_app/core/widgets/dark_app_bar.dart';
 import 'package:reminder_app/data/user_repository.dart';
 import 'package:reminder_app/models/user.dart';
 
@@ -150,7 +149,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: DarkAppBar(title: 'Mi Perfil'),
       bottomNavigationBar: const BottomNavBar(currentRoute: '/profile'),
       body: SafeArea(
         child: _isLoading
@@ -167,6 +165,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text(
+                      "Perfil",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Tu cuenta y tus datos",
+                      style: TextStyle(color: Colors.white54, fontSize: 14),
+                    ),
+                    const SizedBox(height: 60),
                     Center(
                       child: GestureDetector(
                         onTap: _openAvatarPicker,
